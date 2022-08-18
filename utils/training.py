@@ -4,12 +4,10 @@ Utilities for training PyTorch models.
 @author: Ye Danqi
 """
 import torch
-import copy
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 def train_epoch(
         model, dataloader,
-        immutable=True,
         optimizer=None,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu"),
@@ -20,8 +18,6 @@ def train_epoch(
         model (torch.nn.Module): PyTorch model to be trained.
         dataloader (torch.utils.data.DataLoader): PyTorch DataLoader of 
             training data.
-        immutable (boolean): Flag for whether model is immutable. If True,
-            a new model will be instantiated with deepcopy.
         optimizer (torch.optim.Optimizer): Optimizer for backpropagation.
             Defaults to None.
         criterion (torch.nn.Module): PyTorch loss function.
@@ -32,8 +28,6 @@ def train_epoch(
             the reference to the original model.
         loss (float): Average loss from this training epoch. 
     """
-    if immutable:
-        model = copy.deepcopy(model)
     model = model.to(device)
 
     running_loss = 0.0
@@ -61,4 +55,4 @@ def train_epoch(
         # Gather running loss
         running_loss += loss.item()
         
-    return (model, running_loss / data_size)
+    return running_loss / data_size
