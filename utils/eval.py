@@ -41,6 +41,7 @@ def validate(
         avg_vloss (float): Average validation loss.
         avg_verror (float): Average validation error.
     """
+    model = model.to(device)
     running_vloss = 0.0
     running_error = 0.0
     for i, vdata in enumerate(dataloader):
@@ -54,4 +55,4 @@ def validate(
     avg_vloss = running_vloss / (i + 1)
     avg_verror = running_error / (i + 1)
     
-    return (avg_vloss, avg_verror)
+    return (avg_vloss.item(), avg_verror)
