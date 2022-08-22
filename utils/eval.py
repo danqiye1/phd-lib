@@ -50,9 +50,9 @@ def validate(
         error = calculate_error(v_outputs, v_labels.to(device))
         running_error += error
         v_loss = criterion(v_outputs, v_labels.to(device))
-        running_vloss += v_loss
+        running_vloss += v_loss.item()
         
     avg_vloss = running_vloss / (i + 1)
     avg_verror = running_error / (i + 1)
     
-    return (avg_vloss.item(), avg_verror)
+    return (avg_vloss, avg_verror)
