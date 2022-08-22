@@ -1,6 +1,6 @@
 import pytest
 import torch
-from utils.eval import calculate_error
+from patterns.eval import calculate_error
 
 @pytest.mark.parametrize("logits, labels, expected", [
     (torch.Tensor([[0.2, 0.5, 0.1, -0.2]]), torch.Tensor([1]), 0),
