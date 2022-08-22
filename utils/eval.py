@@ -5,6 +5,8 @@ PyTorch utilities for evaluating models.
 """
 import torch
 
+from pdb import set_trace as bp
+
 def calculate_error(logits, labels):
     """Calculate the error of a given set of logits and labels.
     Labels are not one-hot-encoded.
@@ -56,3 +58,28 @@ def validate(
     avg_verror = running_error / (i + 1)
     
     return (avg_vloss, avg_verror)
+
+def adaptive_calibration_error(logits, labels, num_ranges):
+    """Adaptive Calibration Error.
+
+    Calibration error calculation that adapts the bin size to contain equal number of predictions.
+    This accounts for the bias-variance tradeoff and is an improvement to ECE. The motivation and 
+    algorithm is described in "Measuring Calibration in Deep Learning" (Nixon 2019).
+
+    Args:
+        logits (torch.Tensor): Logits from a neural network predicting the labels
+        labels (torch.Tensor): Ground truth labels
+        num_ranges (int): Number of ranges.
+
+    Returns:
+        ace (float): Adaptive calibration error
+    """
+    # Input validation
+    if logits.size(0) != labels.size(0):
+        raise RuntimeError(f"Logits of size {logits.size()} does not match \
+            labels of size {labels.size()}")
+
+    sample_size = logits.size(0)
+    predictions = torch.argmax(torch.softmax(logits, dim=1), dim=1)
+
+    return predictions
