@@ -4,7 +4,12 @@ Utilities for training PyTorch models.
 @author: Ye Danqi
 """
 import torch
-from tqdm.notebook import tqdm
+from IPython import get_ipython
+
+if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
+    from tqdm.notebook import tqdm
+else:
+    from tqdm import tqdm
 
 def train_epoch(
         model, dataloader,
