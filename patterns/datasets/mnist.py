@@ -2,8 +2,6 @@ import os
 import torch
 import torchvision
 
-from pdb import set_trace as bp
-
 class SplitMNIST(torchvision.datasets.MNIST):
     """ SplitMNIST dataset for continual learning """
 
@@ -66,7 +64,6 @@ class SplitMNIST(torchvision.datasets.MNIST):
         """ Overwrite this method from parent class to correctly name data folder. """
         return os.path.join(self.root, "MNIST", "raw")
 
-    @property
     def num_tasks(self):
         """ Get the number of tasks """
         return len(self.targets)
