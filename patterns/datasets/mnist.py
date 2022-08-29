@@ -66,6 +66,11 @@ class SplitMNIST(torchvision.datasets.MNIST):
         """ Overwrite this method from parent class to correctly name data folder. """
         return os.path.join(self.root, "MNIST", "raw")
 
+    @property
+    def num_tasks(self):
+        """ Get the number of tasks """
+        return len(self.targets)
+
     def __getitem__(self, idx: int):
         """ Get item override """
         img = self.data[self.current_task][idx]
@@ -74,7 +79,10 @@ class SplitMNIST(torchvision.datasets.MNIST):
 
     def next_task(self):
         """ Proceed to next task """
-        self.current_task += 1
+        if self.current_task < self.num_tasks() - 1:
+            self.current_task += 1
+        else:
+            print("Last task has reached!")
 
     def __len__(self):
         return len(self.targets[self.current_task])
