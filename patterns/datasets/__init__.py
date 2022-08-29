@@ -1,0 +1,1 @@
+from .cfmnist import *
