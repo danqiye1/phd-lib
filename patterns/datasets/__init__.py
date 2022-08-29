@@ -1,1 +1,1 @@
-from .cfmnist import *
+from .mnist import *
