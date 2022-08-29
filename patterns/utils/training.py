@@ -61,3 +61,47 @@ def train_epoch(
         running_loss += loss.item()
         
     return running_loss / data_size
+
+def train_ewc(
+        model, 
+        dataloader, 
+        task_id,
+        fisher_dict,
+        opt_param_dict,
+        ewc_weight,
+        optimizer, 
+        criterion,
+        device
+    ):
+    """ Train one epoch of the model using Elastic Weight Consolidation strategy.
+    """
+    model = model.to(device)
+
+    running_loss = 0.0
+    data_size = len(dataloader)
+
+    if not optimizer:
+        # Default optimizer if one is not provided
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    for data in tqdm(dataloader):
+        imgs, labels = data
+
+        optimizer.zero_grad()
+
+        output = model(imgs)
+        loss = criterion(output, labels)
+
+        # Regularize loss with Fisher Information Matrix
+        for task in range(task_id):
+            for name, param in model.named_parameters():
+                fisher = fisher_dict[task][name]
+                opt_param = opt_param_dict[task][name]
+                loss += (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
+        
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    
+    return running_loss / data_size
