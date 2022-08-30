@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from patterns.datasets import SplitMNIST
 from patterns.models import LeNet
-from patterns.utils import train_ewc
+from patterns.utils import train_ewc, validate
 
 from pdb import set_trace as bp
 
@@ -51,9 +51,15 @@ fisher_dict = {}
 opt_param_dict = {}
 
 for task in range(trainset.num_tasks()):
-    tqdm.write(f"Training on task {task}")
+    tqdm.write(f"Training on task {trainset.get_current_task()}")
     trainloader = DataLoader(
         trainset,
+        batch_size=config['batch_size'],
+        shuffle=True,
+        num_workers=4
+    )
+    evalloader = DataLoader(
+        evalset,
         batch_size=config['batch_size'],
         shuffle=True,
         num_workers=4
@@ -61,14 +67,14 @@ for task in range(trainset.num_tasks()):
 
     # Train with EWC regularized weights
     for epoch in tqdm(range(config['epochs'])):
-        train_ewc(
-            model, trainloader, task_id=task,
-            fisher_dict=fisher_dict, 
-            opt_param_dict=opt_param_dict, 
-            ewc_weight=config['ewc_weight'],
-            optimizer=optimizer,
-            criterion=criterion,
-            device=device)
+        loss = train_ewc(
+                    model, trainloader, task_id=task,
+                    fisher_dict=fisher_dict, 
+                    opt_param_dict=opt_param_dict, 
+                    ewc_weight=config['ewc_weight'],
+                    optimizer=optimizer,
+                    criterion=criterion,
+                    device=device)
 
     # Update fisher dict and optimal parameter dict
     fisher_dict, opt_param_dict = ewc_update(
@@ -78,3 +84,15 @@ for task in range(trainset.num_tasks()):
                                     optimizer=optimizer,
                                     criterion=criterion,
                                     device=device)
+
+    # Evaluate error rate on current and previous tasks
+    for task in range(evalset.get_current_task()):
+        vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
+        tqdm.write(f"Evaluated task {task}")
+        tqdm.write(
+            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}," 
+            "Validation error: {verror: .3f}")
+
+    # Progress to next task
+    trainset.next_task()
+    evalset.next_task()

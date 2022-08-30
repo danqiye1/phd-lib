@@ -69,6 +69,10 @@ class SplitMNIST(torchvision.datasets.MNIST):
         """ Get the number of tasks """
         return len(self.targets)
 
+    def get_current_task(self):
+        """ Get the current task """
+        return self.current_task
+
     def __getitem__(self, idx: int):
         """ Get item override """
         img = self.data[self.current_task][idx]
