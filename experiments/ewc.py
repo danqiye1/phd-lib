@@ -46,10 +46,6 @@ evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transf
 
 trainset[0]
 
-# Initialize fisher matrix dict and optimum parameter dict
-fisher_dict = {}
-opt_param_dict = {}
-
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
     trainloader = DataLoader(
@@ -58,41 +54,40 @@ for task in range(trainset.num_tasks()):
         shuffle=True,
         num_workers=4
     )
-    evalloader = DataLoader(
-        evalset,
-        batch_size=config['batch_size'],
-        shuffle=True,
-        num_workers=4
-    )
+
+    # Update fisher dict and optimal parameter dict
+    fisher_matrices, opt_params = ewc_update(
+                                    model, trainloader,
+                                    criterion=criterion,
+                                    device=device)
 
     # Train with EWC regularized weights
     for epoch in tqdm(range(config['epochs'])):
         loss = train_ewc(
-                    model, trainloader, task_id=task,
-                    fisher_dict=fisher_dict, 
-                    opt_param_dict=opt_param_dict, 
+                    model, trainloader,
+                    fisher_matrices=fisher_matrices, 
+                    opt_params=opt_params, 
                     ewc_weight=config['ewc_weight'],
                     optimizer=optimizer,
                     criterion=criterion,
                     device=device)
 
-    # Update fisher dict and optimal parameter dict
-    fisher_dict, opt_param_dict = ewc_update(
-                                    model, trainloader, task_id=task,
-                                    fisher_dict=fisher_dict, 
-                                    opt_param_dict=opt_param_dict,
-                                    optimizer=optimizer,
-                                    criterion=criterion,
-                                    device=device)
-
     # Evaluate error rate on current and previous tasks
-    for task in range(evalset.get_current_task() + 1):
+    for task in range(trainset.get_current_task() + 1):
+        evalloader = DataLoader(
+                        evalset,
+                        batch_size=config['batch_size'],
+                        shuffle=True,
+                        num_workers=4
+                    )
         vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
-            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}," 
+            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
             f"Validation error: {verror: .3f}")
+        evalset.next_task()
 
     # Progress to next task
     trainset.next_task()
-    evalset.next_task()
+    evalset.restart()
+    

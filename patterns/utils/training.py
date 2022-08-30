@@ -67,9 +67,8 @@ def train_epoch(
 def train_ewc(
         model, 
         dataloader, 
-        task_id,
-        fisher_dict,
-        opt_param_dict,
+        fisher_matrices,
+        opt_params,
         ewc_weight,
         optimizer, 
         criterion,
@@ -95,11 +94,10 @@ def train_ewc(
         loss = criterion(output, labels.to(device))
 
         # Regularize loss with Fisher Information Matrix
-        for task in range(task_id):
-            for name, param in model.named_parameters():
-                fisher = fisher_dict[task][name].to(device)
-                opt_param = opt_param_dict[task][name].to(device)
-                loss += (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
+        for name, param in model.named_parameters():
+            fisher = fisher_matrices[name].to(device)
+            opt_param = opt_params[name].to(device)
+            loss += (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
         
         loss.backward()
         optimizer.step()
@@ -109,30 +107,30 @@ def train_ewc(
     return running_loss / data_size
 
 def ewc_update(
-        model, dataloader, task_id,
-        fisher_dict, opt_param_dict,
-        optimizer=None,
+        model, dataloader,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu")
     ):
-    model.train()
-    optimizer.zero_grad()
 
+    model = model.to(device)
+
+    fisher_matrices = {}
+    opt_params = {}
+    for name, param in model.named_parameters():
+        fisher_matrices[name] = torch.zeros(param.data.size())
+
+    model.eval()
     # accumulating gradients
     for data in dataloader:
+        model.zero_grad()
         imgs, labels = data
         output = model(imgs.to(device))
         loss = criterion(output, labels.to(device))
         loss.backward()
 
-    fisher_dict = deepcopy(fisher_dict)
-    opt_param_dict = deepcopy(opt_param_dict)
-    fisher_dict[task_id] = {}
-    opt_param_dict[task_id] = {}
-
     # Gradients accumulated can be used to calculate fisher information matrix
     for name, param in model.named_parameters():
-        opt_param_dict[task_id][name] = param.data.clone().cpu()
-        fisher_dict[task_id][name] = param.grad.data.clone().pow(2).cpu()
+        opt_params[name] = param.data.clone().cpu()
+        fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
 
-    return fisher_dict, opt_param_dict
+    return fisher_matrices, opt_params

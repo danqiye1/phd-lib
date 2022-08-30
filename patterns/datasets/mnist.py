@@ -97,6 +97,10 @@ class SplitMNIST(torchvision.datasets.MNIST):
         else:
             print("Last task has reached!")
 
+    def restart(self):
+        """ Restart from task 1 """
+        self.current_task = 0
+
     def __len__(self):
         return len(self.targets[self.current_task])
 
