@@ -86,12 +86,12 @@ for task in range(trainset.num_tasks()):
                                     device=device)
 
     # Evaluate error rate on current and previous tasks
-    for task in range(evalset.get_current_task()):
+    for task in range(evalset.get_current_task() + 1):
         vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}," 
-            "Validation error: {verror: .3f}")
+            f"Validation error: {verror: .3f}")
 
     # Progress to next task
     trainset.next_task()
