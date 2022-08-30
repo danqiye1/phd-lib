@@ -3,13 +3,10 @@ import argparse
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
-from patterns.datasets import SplitMNIST
+from .datasets import SplitMNIST
+from .utils import train_ewc, ewc_update
 from patterns.models import LeNet
-from patterns.utils import train_ewc, validate
-
-from pdb import set_trace as bp
-
-from patterns.utils.training import ewc_update
+from patterns.utils import validate
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
