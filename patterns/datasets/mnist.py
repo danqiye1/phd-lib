@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+from PIL import Image
 
 class SplitMNIST(torchvision.datasets.MNIST):
     """ SplitMNIST dataset for continual learning """
@@ -71,8 +72,19 @@ class SplitMNIST(torchvision.datasets.MNIST):
     def __getitem__(self, idx: int):
         """ Get item override """
         img = self.data[self.current_task][idx]
-        label = self.targets[self.current_task][idx]
-        return self.transform(img), label
+        target = self.targets[self.current_task][idx]
+
+        # Consistent with other torchvision datasets
+        # to return PIL Image if no transform
+        img = Image.fromarray(img.numpy(), mode="L")
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
 
     def next_task(self):
         """ Proceed to next task """
