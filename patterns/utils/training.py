@@ -4,7 +4,9 @@ Utilities for training PyTorch models.
 @author: Ye Danqi
 """
 import torch
+from copy import deepcopy
 from IPython import get_ipython
+from pdb import set_trace as bp
 
 if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
     from tqdm.notebook import tqdm
@@ -89,14 +91,14 @@ def train_ewc(
 
         optimizer.zero_grad()
 
-        output = model(imgs)
-        loss = criterion(output, labels)
+        output = model(imgs.to(device))
+        loss = criterion(output, labels.to(device))
 
         # Regularize loss with Fisher Information Matrix
         for task in range(task_id):
             for name, param in model.named_parameters():
-                fisher = fisher_dict[task][name]
-                opt_param = opt_param_dict[task][name]
+                fisher = fisher_dict[task][name].to(device)
+                opt_param = opt_param_dict[task][name].to(device)
                 loss += (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
         
         loss.backward()
@@ -105,3 +107,32 @@ def train_ewc(
         running_loss += loss.item()
     
     return running_loss / data_size
+
+def ewc_update(
+        model, dataloader, task_id,
+        fisher_dict, opt_param_dict,
+        optimizer=None,
+        criterion=torch.nn.CrossEntropyLoss(),
+        device=torch.device("cpu")
+    ):
+    model.train()
+    optimizer.zero_grad()
+
+    # accumulating gradients
+    for data in dataloader:
+        imgs, labels = data
+        output = model(imgs.to(device))
+        loss = criterion(output, labels.to(device))
+        loss.backward()
+
+    fisher_dict = deepcopy(fisher_dict)
+    opt_param_dict = deepcopy(opt_param_dict)
+    fisher_dict[task_id] = {}
+    opt_param_dict[task_id] = {}
+
+    # Gradients accumulated can be used to calculate fisher information matrix
+    for name, param in model.named_parameters():
+        opt_param_dict[task_id][name] = param.data.clone().cpu()
+        fisher_dict[task_id][name] = param.grad.data.clone().pow(2).cpu()
+
+    return fisher_dict, opt_param_dict
