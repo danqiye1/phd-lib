@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pytorch-patterns", # Replace with your own username
+    name="torchlib", # Replace with your own username
     version="0.0.1",
     author="Ye Danqi",
     author_email="yedanqi@comp.nus.edu.sg",
