@@ -3,7 +3,9 @@ Utilities for training Continual Learning models.
 
 @author: Ye Danqi
 """
+import random
 import torch
+from torch.utils.data import DataLoader
 from IPython import get_ipython
 
 if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
