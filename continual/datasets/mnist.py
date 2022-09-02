@@ -91,15 +91,29 @@ class SplitMNIST(torchvision.datasets.MNIST):
         return img, target
 
     def next_task(self):
-        """ Proceed to next task """
+        """ Proceed to next task. 
+        We do deepcopy to make the dataset immutable.
+        
+        Returns:
+            new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
+        """
         if self.current_task < self.num_tasks() - 1:
-            self.current_task += 1
+            new_set = deepcopy(self)
+            new_set.current_task += 1
+            return new_set
         else:
             print("Last task has reached!")
 
     def restart(self):
-        """ Restart from task 1 """
-        self.current_task = 0
+        """ Restart from task 1 
+        We do deepcopy to make the dataset immutable.
+        
+        Returns:
+            new_set (SplitMNIST): A deepcopy of this dataset with restarted task.
+        """
+        new_set = deepcopy(self)
+        new_set.current_task = 0
+        return new_set
 
     def __len__(self):
         return len(self.targets[self.current_task])
