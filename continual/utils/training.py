@@ -55,7 +55,7 @@ def train_ewc(
 
 def ewc_update(
         model, dataloader,
-        criterion=torch.nn.CrossEntropyLoss(),
+        criterion=torch.nn.NLLLoss(),
         device=torch.device("cpu")
     ):
 
@@ -75,10 +75,10 @@ def ewc_update(
         loss = criterion(output, labels.to(device))
         loss.backward()
 
-    # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
-    # We only want the diagonals of the FIM which is just the square of our gradients.
-    for name, param in model.named_parameters():
-        opt_params[name] = param.data.clone().cpu()
-        fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
+        # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
+        # We only want the diagonals of the FIM which is just the square of our gradients.
+        for name, param in model.named_parameters():
+            opt_params[name] = param.data.clone().cpu()
+            fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
 
     return fisher_matrices, opt_params

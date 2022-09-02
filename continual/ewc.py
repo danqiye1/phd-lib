@@ -41,7 +41,12 @@ transforms = Compose([
 trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
 evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
 
-trainset[0]
+# Setup fisher matrices and opt_param for first pass
+fisher_matrices = {}
+opt_params = {}
+for name, param in model.named_parameters():
+    fisher_matrices[name] = torch.zeros(param.data.size())
+    opt_params[name] = torch.zeros(param.data.size())
 
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
@@ -51,12 +56,6 @@ for task in range(trainset.num_tasks()):
         shuffle=True,
         num_workers=4
     )
-
-    # Update fisher dict and optimal parameter dict
-    fisher_matrices, opt_params = ewc_update(
-                                    model, trainloader,
-                                    criterion=criterion,
-                                    device=device)
 
     # Train with EWC regularized weights
     for epoch in tqdm(range(config['epochs'])):
@@ -68,6 +67,12 @@ for task in range(trainset.num_tasks()):
                     optimizer=optimizer,
                     criterion=criterion,
                     device=device)
+
+    # Update fisher dict and optimal parameter dict
+    fisher_matrices, opt_params = ewc_update(
+                                    model, trainloader,
+                                    criterion=criterion,
+                                    device=device)
 
     # Evaluate error rate on current and previous tasks
     for task in range(trainset.get_current_task() + 1):
