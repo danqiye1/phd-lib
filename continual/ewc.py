@@ -70,7 +70,7 @@ for task in range(trainset.num_tasks()):
 
     # Update fisher dict and optimal parameter dict
     fisher_matrices, opt_params = ewc_update(
-                                    model, trainloader,
+                                    model, trainset,
                                     criterion=criterion,
                                     device=device)
 

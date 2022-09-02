@@ -56,7 +56,7 @@ def train_ewc(
     return running_loss / data_size
 
 def ewc_update(
-        model, dataloader,
+        model, dataset,
         criterion=torch.nn.NLLLoss(),
         device=torch.device("cpu")
     ):
@@ -66,11 +66,18 @@ def ewc_update(
     fisher_matrices = {}
     opt_params = {}
     for name, param in model.named_parameters():
-        fisher_matrices[name] = torch.zeros(param.data.size())
+        fisher_matrices[name] = torch.zeros(param.data.size(), requires_grad=True)
+
+    # Use a dataloader that loads 1 data point at a time
+    dataloader = DataLoader(
+                        dataset,
+                        batch_size=1,
+                        shuffle=True
+                    )
 
     model.eval()
-    # accumulating gradients
-    for data in dataloader:
+    # accumulating gradients, Note perhaps we need to be calculating gradient of each data point instead of minibatch gradient
+    for data in tqdm(dataloader, total=len(dataloader)):
         model.zero_grad()
         imgs, labels = data
         output = model(imgs.to(device))
@@ -81,7 +88,8 @@ def ewc_update(
         # We only want the diagonals of the FIM which is just the square of our gradients.
         for name, param in model.named_parameters():
             opt_params[name] = param.data.clone().cpu()
-            fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
+            # Note: we cannot use += here because it is an in-place operation on a leaf Variable
+            fisher_matrices[name] = fisher_matrices[name] + param.grad.data.clone().pow(2).cpu() / len(dataloader)
 
     return fisher_matrices, opt_params
 
