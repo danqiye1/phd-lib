@@ -82,3 +82,77 @@ def ewc_update(
             fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
 
     return fisher_matrices, opt_params
+
+def rehearsal(
+    model, dataset,
+    batch_size=32,
+    optimizer=None,
+    criterion=torch.nn.CrossEntropyLoss(),
+    device=torch.device("cpu")
+    ):
+    """ Training one epoch using the rehearsal strategy to mitigate catastrophic forgetting.
+
+    Args:
+        model (torch.nn.Module): PyTorch model to be trained.
+        dataset (continual.SplitMNIST): SplitMNIST dataset used for 
+            benchmarking continual learning.
+        batch_size (int): Desired batch size for minibatch. Note that we will split
+            this equally among the current tasks and previous tasks.
+        optimizer (torch.optim.Optimizer): Optimizer for backpropagation.
+            Defaults to None.
+        criterion (torch.nn.Module): PyTorch loss function.
+        device (torch.device): The device for training.
+
+    Returns:
+        loss (float): Average loss from this training epoch. 
+    """
+    model = model.to(device)
+
+    running_loss = 0.0
+    data_size = len(dataset)
+    current_task = dataset.get_current_task()
+    task_batch_size = batch_size // (current_task + 1)
+
+    # Get dataset of all prev task
+    prevsets = []
+    for task in range(current_task):
+        prevsets.append(dataset.go_to_task(task))
+
+    # Initialize a dataloader
+    trainloader = DataLoader(
+                    dataset=dataset, 
+                    batch_size=task_batch_size, 
+                    shuffle=True, 
+                    num_workers=4)
+
+    if not optimizer:
+        # Default optimizer if one is not provided
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    for data in tqdm(trainloader):
+        imgs, labels = data
+
+        # Sample datasets of prev tasks and mix
+        for prev_data in prevsets:
+            indices = random.sample(range(0, len(prev_data)), task_batch_size)
+            for idx in indices:
+                prev_img, prev_label = prev_data[idx]
+                imgs = torch.cat((imgs, prev_img.unsqueeze(0)))
+                labels = torch.cat((labels, prev_label.unsqueeze(0)))
+        
+        # Permute the minibatch
+        indices = torch.randperm(len(labels))
+        imgs = imgs[indices]
+        labels = labels[indices]
+
+        optimizer.zero_grad()
+
+        output = model(imgs.to(device))
+        loss = criterion(output, labels.to(device))
+        
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    
+    return running_loss / data_size
