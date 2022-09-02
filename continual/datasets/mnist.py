@@ -2,6 +2,7 @@ import os
 import torch
 import torchvision
 from PIL import Image
+from copy import deepcopy
 
 class SplitMNIST(torchvision.datasets.MNIST):
     """ SplitMNIST dataset for continual learning """
@@ -90,6 +91,24 @@ class SplitMNIST(torchvision.datasets.MNIST):
 
         return img, target
 
+    def go_to_task(self, task_id):
+        """ Proceed to given task. 
+        We do deepcopy to make the dataset immutable.
+
+        Args:
+            task_id (int): Task to go to.
+        
+        Returns:
+            new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
+        """
+        if task_id < self.num_tasks() - 1:
+            new_set = deepcopy(self)
+            new_set.current_task = task_id
+            return new_set
+        else:
+            print("Last task has reached!")
+            return self
+
     def next_task(self):
         """ Proceed to next task. 
         We do deepcopy to make the dataset immutable.
@@ -97,12 +116,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
         """
-        if self.current_task < self.num_tasks() - 1:
-            new_set = deepcopy(self)
-            new_set.current_task += 1
-            return new_set
-        else:
-            print("Last task has reached!")
+        return self.go_to_task(self.current_task + 1)
 
     def restart(self):
         """ Restart from task 1 
@@ -111,9 +125,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with restarted task.
         """
-        new_set = deepcopy(self)
-        new_set.current_task = 0
-        return new_set
+        return self.go_to_task(0)
 
     def __len__(self):
         return len(self.targets[self.current_task])
