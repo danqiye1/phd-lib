@@ -47,7 +47,16 @@ evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transf
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
     # Train with pseudo rehearsal strategy
-    for epoch in tqdm(range(config['epochs'])):
+    if task == 0:
+        for epoch in tqdm(range(config['epochs'])):
+            loss = pseudo_rehearsal(
+                        model, trainset,
+                        batch_size=config['batch_size'],
+                        optimizer=optimizer,
+                        criterion=criterion,
+                        device=device,
+                        mode=config['mode'])
+    else:
         loss = pseudo_rehearsal(
                     model, trainset,
                     batch_size=config['batch_size'],
