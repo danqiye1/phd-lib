@@ -86,11 +86,11 @@ def ewc_update(
     return fisher_matrices, opt_params
 
 def rehearsal(
-    model, dataset,
-    batch_size=32,
-    optimizer=None,
-    criterion=torch.nn.CrossEntropyLoss(),
-    device=torch.device("cpu")
+        model, dataset,
+        batch_size=32,
+        optimizer=None,
+        criterion=torch.nn.CrossEntropyLoss(),
+        device=torch.device("cpu")
     ):
     """ Training one epoch using the rehearsal strategy to mitigate catastrophic forgetting.
 
