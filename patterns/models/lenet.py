@@ -4,7 +4,7 @@ import torch.nn as nn
 class LeNet(nn.Module):
     """ LeNet5 model """
     
-    def __init__(self):
+    def __init__(self, num_classes=10):
         super(LeNet, self).__init__()
         self.convnet = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5),
@@ -18,7 +18,7 @@ class LeNet(nn.Module):
         )
         
         self.fc1 = nn.Linear(in_features=120, out_features=84)
-        self.fc2 = nn.Linear(in_features=84, out_features=10)
+        self.fc2 = nn.Linear(in_features=84, out_features=num_classes)
         
     def forward(self, img):
         X = self.convnet(img)
