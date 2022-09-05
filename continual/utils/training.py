@@ -6,6 +6,7 @@ Utilities for training Continual Learning models.
 import random
 import torch
 from torch.utils.data import DataLoader
+from copy import deepcopy
 from IPython import get_ipython
 
 if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
@@ -151,6 +152,102 @@ def rehearsal(
 
         output = model(imgs.to(device))
         loss = criterion(output, labels.to(device))
+        
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    
+    return running_loss / data_size
+
+def pseudo_rehearsal(
+        model, dataset,
+        batch_size=32,
+        optimizer=None,
+        criterion=torch.nn.CrossEntropyLoss(),
+        device=torch.device("cpu"),
+        mode="uniform",
+        dist_params=(0.1307, 0.3081)
+    ):
+    """ Training one epoch using the pseudo rehearsal strategy to mitigate catastrophic forgetting.
+
+    In this strategy, the model will be used to generate labels given a random input. 
+    This (input,label) pair will then be batched with the new data to train the new data without
+    forgetting.
+
+    Args:
+        model (torch.nn.Module): PyTorch model to be trained.
+        dataset (continual.SplitMNIST): SplitMNIST dataset used for 
+            benchmarking continual learning.
+        batch_size (int): Desired batch size for minibatch. Note that we will split
+            this equally among the current tasks and previous tasks.
+        optimizer (torch.optim.Optimizer): Optimizer for backpropagation.
+            Defaults to None.
+        criterion (torch.nn.Module): PyTorch loss function.
+        device (torch.device): The device for training.
+        mode (str): PDF to use to generate pseudo-items. Can be "uniform" or "normal".
+            If "normal" is used, parameters of mean and std can be supplied.
+        dist_params (tuple): Tuple of (mean, std) to be used if mode="normal".
+
+    Returns:
+        loss (float): Average loss from this training epoch. 
+    """
+    model = model.to(device)
+
+    # Make a copy of old model for pseudo item synthesis
+    old_model = deepcopy(model)
+
+    running_loss = 0.0
+    data_size = len(dataset)
+    current_task = dataset.get_current_task()
+
+    # Get current task's batch size and the number of
+    # pseudo items to generate.
+    task_batch_size = batch_size // (current_task + 1)
+    num_items = batch_size - task_batch_size
+
+    # Initialize a dataloader
+    trainloader = DataLoader(
+                    dataset=dataset, 
+                    batch_size=task_batch_size, 
+                    shuffle=True, 
+                    num_workers=4)
+
+    if not optimizer:
+        # Default optimizer if one is not provided
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    for data in tqdm(trainloader):
+        imgs, labels = data
+        imgs, labels = imgs.to(device), \
+            torch.nn.functional.one_hot(labels, 10)
+        labels = labels.type(torch.FloatTensor).to(device)
+        img_dims = imgs[0].unsqueeze(0).size()
+
+        # Generate pseudoitems and mix
+        for _ in range(num_items):
+            if mode == "uniform":
+                item = torch.rand(img_dims, device=device)
+            elif mode == "normal":
+                item = torch.normal(
+                            mean=torch.ones(img_dims) * dist_params[0], 
+                            std=torch.ones(img_dims) * dist_params[1],
+                        ).to(device)
+            pseudolabel = old_model(item)
+            # Need to softmax the pseudolabels into valid probs
+            pseudolabel = torch.softmax(pseudolabel, dim=1)
+            imgs = torch.cat((imgs, item))
+            labels = torch.cat((labels, pseudolabel))
+        
+        # Permute the minibatch
+        indices = torch.randperm(len(labels))
+        imgs = imgs[indices]
+        labels = labels[indices]
+
+        optimizer.zero_grad()
+
+        output = model(imgs)
+        loss = criterion(output, labels)
         
         loss.backward()
         optimizer.step()
