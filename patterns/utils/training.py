@@ -53,7 +53,7 @@ def train_epoch(
         # Default optimizer if one is not provided
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     
-    for data in dataloader:
+    for data in tqdm(dataloader):
         imgs, labels = data
         
         optimizer.zero_grad()

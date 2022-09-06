@@ -70,6 +70,10 @@ class SplitMNIST(torchvision.datasets.MNIST):
         """ Get the number of tasks """
         return len(self.targets)
 
+    def num_classes(self):
+        """ Get the number of classes for current task """
+        return len(self.targets[self.current_task].unique())
+
     def get_current_task(self):
         """ Get the current task """
         return self.current_task
