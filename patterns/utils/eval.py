@@ -5,8 +5,6 @@ PyTorch utilities for evaluating models.
 """
 import torch
 
-from pdb import set_trace as bp
-
 def calculate_error(logits, labels):
     """Calculate the error of a given set of logits and labels.
     Labels are not one-hot-encoded.
@@ -44,6 +42,7 @@ def validate(
         avg_verror (float): Average validation error.
     """
     model = model.to(device)
+    model.eval()
     running_vloss = 0.0
     running_error = 0.0
     for i, vdata in enumerate(dataloader):
