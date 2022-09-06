@@ -13,7 +13,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         download=False, 
         transform=None, 
         target_transform=None,
-        tasks=[[0,1,2,3,4,5],[6],[7],[8],[9]],
+        tasks=[[0,1,2,3,4,5],[6,7],[8,9]],
     ):
         """ Constructor
         
@@ -105,7 +105,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
         """
-        if task_id < self.num_tasks() - 1:
+        if task_id < self.num_tasks():
             new_set = deepcopy(self)
             new_set.current_task = task_id
             return new_set
