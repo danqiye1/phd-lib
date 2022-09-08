@@ -4,6 +4,7 @@ Utilities for training Continual Learning models.
 @author: Ye Danqi
 """
 import random
+from torch.autograd import Variable
 import torch
 from torch.utils.data import DataLoader
 from copy import deepcopy
@@ -16,7 +17,8 @@ else:
 
 def train_ewc(
         model, 
-        dataloader, 
+        dataset,
+        batch_size,
         fisher_matrices,
         opt_params,
         ewc_weight,
@@ -27,9 +29,10 @@ def train_ewc(
     """ Train one epoch of the model using Elastic Weight Consolidation strategy.
     """
     model = model.to(device)
-
+    model.train()
     running_loss = 0.0
-    data_size = len(dataloader)
+    data_size = len(dataset)
+    dataloader = DataLoader(dataset, batch_size, shuffle=True)
 
     if not optimizer:
         # Default optimizer if one is not provided
@@ -44,10 +47,12 @@ def train_ewc(
         loss = criterion(output, labels.to(device))
 
         # Regularize loss with Fisher Information Matrix
-        for name, param in model.named_parameters():
-            fisher = fisher_matrices[name].to(device)
-            opt_param = opt_params[name].to(device)
-            loss += (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
+        for task in range(dataset.get_current_task()):
+            for name, param in model.named_parameters():
+                fisher = fisher_matrices[task][name]
+                opt_param = opt_params[task][name]
+                penalty = (fisher * (opt_param - param).pow(2)).sum() * ewc_weight
+                loss += penalty.to(device)
         
         loss.backward()
         optimizer.step()
@@ -57,32 +62,39 @@ def train_ewc(
     return running_loss / data_size
 
 def ewc_update(
-        model, dataloader,
-        criterion=torch.nn.NLLLoss(),
+        model, dataset,
+        batch_size=32,
+        optimizer=None,
+        criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu")
     ):
 
     model = model.to(device)
+    optimizer.zero_grad()
 
-    fisher_matrices = {}
-    opt_params = {}
-    for name, param in model.named_parameters():
-        fisher_matrices[name] = torch.zeros(param.data.size())
+    dataloader = DataLoader(
+            dataset=dataset,
+            batch_size=batch_size,
+            shuffle=True, 
+        )
 
-    model.eval()
+    model.train()
     # accumulating gradients
     for data in dataloader:
-        model.zero_grad()
         imgs, labels = data
         output = model(imgs.to(device))
         loss = criterion(output, labels.to(device))
         loss.backward()
+        optimizer.zero_grad()
 
-        # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
-        # We only want the diagonals of the FIM which is just the square of our gradients.
-        for name, param in model.named_parameters():
-            opt_params[name] = param.data.clone().cpu()
-            fisher_matrices[name] += param.grad.data.clone().pow(2).cpu() / len(dataloader)
+    opt_params = {}
+    fisher_matrices = {}
+
+    # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
+    # We only want the diagonals of the FIM which is just the square of our gradients.
+    for name, param in model.named_parameters():
+        opt_params[name] = param.data.clone()
+        fisher_matrices[name] = param.grad.data.clone().pow(2)
 
     return fisher_matrices, opt_params
 
