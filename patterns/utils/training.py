@@ -60,7 +60,7 @@ def train_epoch(
         
         # Forward pass
         outputs = model(imgs.to(device))
-        
+    
         # Compute loss and backpropagate error gradients
         loss = criterion(outputs, labels.to(device))
         loss.backward()

@@ -6,7 +6,6 @@ This is for testing in training and validation functions are correct.
 import torch
 import argparse
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from torchvision.datasets import MNIST
 from patterns.models import LeNet
@@ -43,13 +42,6 @@ criterion = torch.nn.CrossEntropyLoss()
 device = torch.device(args.device_type)
 model = LeNet(10).to(device)
 
-evalloader = DataLoader(
-                    evalset,
-                    batch_size=config['batch_size'],
-                    shuffle=True,
-                    num_workers=4
-                )
-
 for epoch in tqdm(range(config['epochs'])):
     loss = train_epoch(
                 model, trainset,
@@ -57,7 +49,11 @@ for epoch in tqdm(range(config['epochs'])):
                 criterion=criterion,
                 device=device)
 
-    vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
+    vloss, verror = validate(
+                        model, evalset, config['batch_size'],
+                        criterion=criterion, 
+                        device=device
+                    )
     tqdm.write(f"Epoch {epoch}")
     tqdm.write(
         f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 

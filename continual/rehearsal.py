@@ -64,7 +64,11 @@ for task in range(trainset.num_tasks()):
                         shuffle=True,
                         num_workers=4
                     )
-        vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
+        vloss, verror = validate(
+                    model, evalset, config['batch_size'],
+                    criterion=criterion, 
+                    device=device
+                )
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 

@@ -4,6 +4,7 @@ PyTorch utilities for evaluating models.
 @author: Ye Danqi
 """
 import torch
+from torch.utils.data import DataLoader
 
 def calculate_error(logits, labels):
     """Calculate the error of a given set of logits and labels.
@@ -25,7 +26,8 @@ def calculate_error(logits, labels):
     return error_rate.item()
 
 def validate(
-        model, dataloader, 
+        model, dataset,
+        batch_size=32,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu")
     ):
@@ -43,6 +45,7 @@ def validate(
     """
     model = model.to(device)
     model.eval()
+    dataloader = DataLoader(dataset, batch_size)
     running_vloss = 0.0
     running_error = 0.0
     for i, vdata in enumerate(dataloader):

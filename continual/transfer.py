@@ -5,13 +5,10 @@ to mitigate catastrophic forgetting.
 import torch
 import argparse
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST
 from patterns.models import LeNetHead, LeNetBase
 from patterns.utils import validate, train_epoch
-
-from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -61,15 +58,12 @@ for task in range(trainset.num_tasks()):
 
     # Evaluate error rate on current and previous tasks
     for task in range(trainset.get_current_task() + 1):
-        evalloader = DataLoader(
-                        evalset,
-                        batch_size=config['batch_size'],
-                        shuffle=True,
-                        num_workers=4
-                    )
-
         model = model_heads[task]
-        vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
+        vloss, verror = validate(
+                            model, evalset, config['batch_size'],
+                            criterion=criterion, 
+                            device=device
+                        )
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 

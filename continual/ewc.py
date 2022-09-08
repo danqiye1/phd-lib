@@ -84,13 +84,11 @@ for task in range(trainset.num_tasks()):
 
     # Evaluate error rate on current and previous tasks
     for task in range(trainset.get_current_task() + 1):
-        evalloader = DataLoader(
-                        evalset,
-                        batch_size=config['batch_size'],
-                        shuffle=True,
-                        num_workers=4
-                    )
-        vloss, verror = validate(model, evalloader, criterion=criterion, device=device)
+        vloss, verror = validate(
+                            model, evalset, config['batch_size'],
+                            criterion=criterion, 
+                            device=device
+                        )
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
