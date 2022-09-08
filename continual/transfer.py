@@ -7,8 +7,9 @@ import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST
-from patterns.models import LeNetHead, LeNetBase
-from patterns.utils import validate, train_epoch
+from .utils import train_epoch
+from patterns.models import MultiHeadLeNet
+from patterns.utils import validate
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -36,32 +37,22 @@ trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
 evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
 
 # Setup training
-criterion = torch.nn.CrossEntropyLoss()
 device = torch.device(args.device_type)
-base = LeNetBase().to(device)
+model = MultiHeadLeNet(num_classes=trainset.num_classes())
 
-model_heads = []
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-    # Instantiate the model
-    model = LeNetHead(base, num_classes=trainset.num_classes())
-    # Train with rehearsal strategy
+    # Train with epoch training
     for epoch in tqdm(range(config['epochs'])):
         loss = train_epoch(
                     model, trainset,
                     batch_size=config['batch_size'],
-                    criterion=criterion,
                     device=device)
-
-    # Add model head to list
-    model_heads.append(model)
 
     # Evaluate error rate on current and previous tasks
     for task in range(trainset.get_current_task() + 1):
-        model = model_heads[task]
         vloss, verror = validate(
                             model, evalset, config['batch_size'],
-                            criterion=criterion, 
                             device=device
                         )
         tqdm.write(f"Evaluated task {task}")
@@ -73,4 +64,5 @@ for task in range(trainset.num_tasks()):
     # Progress to next task
     trainset = trainset.next_task()
     evalset = evalset.restart()
+    model.add_head(num_classes=trainset.num_classes())
     

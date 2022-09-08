@@ -267,3 +267,61 @@ def pseudo_rehearsal(
         running_loss += loss.item()
     
     return running_loss / data_size
+
+def train_epoch(
+        model, dataset,
+        batch_size=32,
+        optimizer=None,
+        criterion=torch.nn.CrossEntropyLoss(),
+        device=torch.device("cpu"),
+    ):
+    """
+    Multihead model training. 
+    Everything is the same as epoch training except that labels 
+    for subsequent heads need to be preprocessed to start from 0.
+    """
+    model = model.to(device)
+    model.train()
+
+    running_loss = 0.0
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2
+    )
+
+    # Get the smallest label
+    for data in DataLoader(dataset, len(dataset)):
+        _, label = data
+        min_label = label.min().item()
+
+    num_batches = len(dataloader)
+
+    if not optimizer:
+        # Default optimizer if one is not provided
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    
+    for data in tqdm(dataloader):
+        imgs, labels = data
+        
+        optimizer.zero_grad()
+
+        # Preprocess labels
+        labels = labels - min_label
+        
+        # Forward pass
+        outputs = model(imgs.to(device))
+    
+        # Compute loss and backpropagate error gradients
+        loss = criterion(outputs, labels.to(device))
+        loss.backward()
+        
+        # Gradient descent
+        optimizer.step()
+        
+        # Gather running loss
+        running_loss += loss.item()
+        
+    return running_loss / num_batches

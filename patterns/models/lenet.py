@@ -1,20 +1,39 @@
 import torch
 import torch.nn as nn
 
-from pdb import set_trace as bp
-
 class LeNet(nn.Module):
     """ Vanilla LeNet5 model """
-    
     def __init__(self, num_classes=10):
         super(LeNet, self).__init__()
         self.base = LeNetBase()
-        self.fc2 = nn.Linear(in_features=84, out_features=num_classes)
+        self.head = LeNetHead(num_classes)
         
     def forward(self, img):
         X = self.base(img)
-        X = self.fc2(X)
+        X = self.head(X)
         return X
+
+class MultiHeadLeNet(nn.Module):
+    """ MultiHeadLeNet for Continual Learning """
+    def __init__(self, num_classes=10):
+        super(MultiHeadLeNet, self).__init__()
+        self.base = LeNetBase()
+        self.heads = nn.ModuleList([LeNetHead(num_classes)])
+
+    def forward(self, img):
+        X = self.base(img)
+        if self.training:
+            X = self.heads[-1](X)
+        else:
+            outputs = []
+            for head in self.heads:
+                outputs.append(head(X))
+            X = torch.cat(outputs, dim=1)
+        return X
+
+    def add_head(self, num_classes):
+        """ Add head for a new class """
+        self.heads.append(LeNetHead(num_classes))
 
 class LeNetBase(nn.Module):
     """ Base of Multi-head LeNet5 Model """
@@ -33,25 +52,17 @@ class LeNetBase(nn.Module):
 class LeNetHead(nn.Module):
     """ Multi-head LeNet5 model """
 
-    def __init__(self, base: LeNetBase, num_classes=10):
+    def __init__(self, num_classes=10):
         super(LeNetHead, self).__init__()
-        self.base = base
         self.head = nn.Linear(in_features=84, out_features=num_classes)
 
-    def forward(self, img):
+    def forward(self, X):
         """ Forward method for training 
         
         Note only the last head gets trained as the rest are expected to be frozen.
         For evaluation, use forward_eval.
         """
-        X = self.base(img)
-        X = self.head(X)
-        return X
-
-    def freeze(self):
-        """ Freeze all layers """
-        for params in self.parameters():
-            params.requires_grad = False
+        return self.head(X)
 
 class LeNetConv(nn.Module):
     """ LeNet5 Convolution Layers """
