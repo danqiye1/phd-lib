@@ -11,8 +11,6 @@ from .utils import rehearsal
 from patterns.models import LeNet
 from patterns.utils import validate
 
-from pdb import set_trace as bp
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--max_epoch', type=int, default=10)
