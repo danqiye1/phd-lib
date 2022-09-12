@@ -1,6 +1,7 @@
 import os
 import torch
 import torchvision
+from tqdm import tqdm
 from PIL import Image
 from copy import deepcopy
 
@@ -13,7 +14,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         download=False, 
         transform=None, 
         target_transform=None,
-        tasks=[[0,1,2,3,4,5],[6],[7],[8],[9]],
+        tasks=[[0,1,2,3,4,5],[6,7],[8,9]],
     ):
         """ Constructor
         
@@ -70,6 +71,10 @@ class SplitMNIST(torchvision.datasets.MNIST):
         """ Get the number of tasks """
         return len(self.targets)
 
+    def num_classes(self):
+        """ Get the number of classes for current task """
+        return len(self.targets[self.current_task].unique())
+
     def get_current_task(self):
         """ Get the current task """
         return self.current_task
@@ -101,7 +106,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
         """
-        if task_id < self.num_tasks() - 1:
+        if task_id < self.num_tasks():
             new_set = deepcopy(self)
             new_set.current_task = task_id
             return new_set
@@ -139,3 +144,71 @@ class SplitMNIST(torchvision.datasets.MNIST):
             f"Split: {'Train' if self.train else 'Test'}"
         ]
         return head + "\n\t" + "\n\t".join(body)
+
+class PermutedMNIST(torchvision.datasets.MNIST):
+    
+    def __init__(
+            self, root, 
+            train=True, 
+            download=False, 
+            transform=None, 
+            target_transform=None,
+            num_experiences=5,
+            seed=1
+        ):
+        super().__init__(root, train, transform, target_transform, download)
+
+        # Start from experience 0
+        self.current_experience = 0
+
+        # Initial load data
+        imgs, labels = self._load_data()
+        img_width = imgs.size(2)
+        img_height = imgs.size(1)
+
+        # Permute data for each task
+        # The first experience is the original mnist
+        self.experiences = [(imgs, labels)]
+        torch.manual_seed(seed)
+
+        for _ in tqdm(range(1, num_experiences)):
+            indices = torch.randperm(img_width * img_height)
+            imgs = deepcopy(imgs)
+            labels = deepcopy(labels)
+
+            for i in range(len(imgs)):
+                imgs[i] = imgs[i].view(-1)[indices].view((img_height, img_width))
+            
+            self.experiences.append((imgs, labels))
+
+
+    @property
+    def raw_folder(self) -> str:
+        """ Overwrite this method from parent class to correctly name data folder. """
+        return os.path.join(self.root, "MNIST", "raw")
+
+    def _go_to_exp(self, experience):
+        self.current_experience = experience % len(self.experiences)
+
+    def next_exp(self):
+        self._go_to_exp(self.current_experience + 1)
+
+    def __len__(self):
+        return len(self.experiences[self.current_experience][1])
+
+    def __getitem__(self, idx):
+        """ Get item override """
+        imgs, labels = self.experiences[self.current_experience]
+        img, target = imgs[idx], labels[idx]
+
+        # Consistent with other torchvision datasets
+        # to return PIL Image if no transform
+        img = Image.fromarray(img.numpy(), mode="L")
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target

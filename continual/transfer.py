@@ -1,14 +1,14 @@
 """
-Demo of Rehearsal Mechanism
+Experiment of using transfer learning on multi-head models
+to mitigate catastrophic forgetting.
 """
 import torch
 import argparse
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST
-from .utils import rehearsal
-from patterns.models import LeNet
+from .utils import train_epoch
+from patterns.models import MultiHeadLeNet
 from patterns.utils import validate
 
 parser = argparse.ArgumentParser()
@@ -28,12 +28,6 @@ config = {
     "batch_size": args.batch_size,
 }
 
-# Setup training
-model = LeNet()
-optimizer = torch.optim.SGD(model.parameters(), lr=config['learning_rate'])
-criterion = torch.nn.CrossEntropyLoss()
-device = torch.device(args.device_type)
-
 transforms = Compose([
     ToTensor(),
     Pad(2), # For LeNet input
@@ -42,31 +36,25 @@ transforms = Compose([
 trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
 evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
 
+# Setup training
+device = torch.device(args.device_type)
+model = MultiHeadLeNet(num_classes=trainset.num_classes())
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-
-    # Train with rehearsal strategy
+    # Train with epoch training
     for epoch in tqdm(range(config['epochs'])):
-        loss = rehearsal(
+        loss = train_epoch(
                     model, trainset,
                     batch_size=config['batch_size'],
-                    optimizer=optimizer,
-                    criterion=criterion,
                     device=device)
 
     # Evaluate error rate on current and previous tasks
     for task in range(trainset.get_current_task() + 1):
-        evalloader = DataLoader(
-                        evalset,
-                        batch_size=config['batch_size'],
-                        shuffle=True,
-                        num_workers=4
-                    )
         vloss, verror = validate(
-                    model, evalset, config['batch_size'],
-                    criterion=criterion, 
-                    device=device
-                )
+                            model, evalset, config['batch_size'],
+                            device=device
+                        )
         tqdm.write(f"Evaluated task {task}")
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
@@ -76,4 +64,5 @@ for task in range(trainset.num_tasks()):
     # Progress to next task
     trainset = trainset.next_task()
     evalset = evalset.restart()
+    model.add_head(num_classes=trainset.num_classes())
     
