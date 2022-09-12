@@ -162,6 +162,7 @@ class PermutedMNIST(torchvision.datasets.MNIST):
         self.experiences = [(imgs, labels)]
         torch.manual_seed(seed)
 
+        tqdm.write("Permuting dataset")
         for _ in tqdm(range(1, num_experiences)):
             indices = torch.randperm(img_width * img_height)
             imgs = deepcopy(imgs)
@@ -178,14 +179,14 @@ class PermutedMNIST(torchvision.datasets.MNIST):
         """ Overwrite this method from parent class to correctly name data folder. """
         return os.path.join(self.root, "MNIST", "raw")
 
-    def _go_to_exp(self, experience):
+    def go_to_task(self, experience):
         self.current_experience = experience % len(self.experiences)
 
     def next_task(self):
-        self._go_to_exp(self.current_experience + 1)
+        self.go_to_task(self.current_experience + 1)
 
     def restart(self):
-        self._go_to_exp(0)
+        self.go_to_task(0)
 
     def num_tasks(self):
         return len(self.experiences)
