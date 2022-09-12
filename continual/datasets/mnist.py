@@ -102,17 +102,8 @@ class SplitMNIST(torchvision.datasets.MNIST):
 
         Args:
             task_id (int): Task to go to.
-        
-        Returns:
-            new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
         """
-        if task_id < self.num_tasks():
-            new_set = deepcopy(self)
-            new_set.current_task = task_id
-            return new_set
-        else:
-            print("Last task has reached!")
-            return self
+        self.current_task = task_id % self.num_tasks()
 
     def next_task(self):
         """ Proceed to next task. 
@@ -121,7 +112,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with incremented task.
         """
-        return self.go_to_task(self.current_task + 1)
+        self.go_to_task(self.current_task + 1)
 
     def restart(self):
         """ Restart from task 1 
@@ -130,7 +121,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         Returns:
             new_set (SplitMNIST): A deepcopy of this dataset with restarted task.
         """
-        return self.go_to_task(0)
+        self.go_to_task(0)
 
     def __len__(self):
         return len(self.targets[self.current_task])
@@ -190,8 +181,11 @@ class PermutedMNIST(torchvision.datasets.MNIST):
     def _go_to_exp(self, experience):
         self.current_experience = experience % len(self.experiences)
 
-    def next_exp(self):
+    def next_task(self):
         self._go_to_exp(self.current_experience + 1)
+
+    def restart(self):
+        self._go_to_exp(0)
 
     def __len__(self):
         return len(self.experiences[self.current_experience][1])
