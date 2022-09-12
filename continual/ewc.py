@@ -98,8 +98,8 @@ for task in range(trainset.num_tasks()):
         tqdm.write(
             f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
             f"Validation error: {verror: .3f}")
-        evalset.next_task()
+        evalset = evalset.next_task()
 
     # Progress to next task
-    trainset.next_task()
+    trainset = trainset.next_task()
     

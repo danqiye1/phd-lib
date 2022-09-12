@@ -4,7 +4,6 @@ Utilities for training Continual Learning models.
 @author: Ye Danqi
 """
 import random
-from torch.autograd import Variable
 import torch
 from torch.utils.data import DataLoader
 from copy import deepcopy
