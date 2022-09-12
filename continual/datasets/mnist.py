@@ -187,6 +187,12 @@ class PermutedMNIST(torchvision.datasets.MNIST):
     def restart(self):
         self._go_to_exp(0)
 
+    def num_tasks(self):
+        return len(self.experiences)
+
+    def get_current_task(self):
+        return self.current_experience
+
     def __len__(self):
         return len(self.experiences[self.current_experience][1])
 
