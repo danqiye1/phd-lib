@@ -15,23 +15,48 @@ else:
     from tqdm import tqdm
 
 def train_ewc(
-        model, 
-        dataset,
-        batch_size,
+        model, trainset,
         fisher_matrices,
         opt_params,
-        ewc_weight,
-        optimizer, 
-        criterion,
-        device
+        batch_size=32,
+        ewc_weight=0.4,
+        optimizer=None, 
+        criterion=torch.nn.CrossEntropyLoss(),
+        device=torch.device("cpu"),
+        validate_fn=None,
+        valset=None
     ):
     """ Train one epoch of the model using Elastic Weight Consolidation strategy.
+
+    Args:
+        model (torch.nn.Module): PyTorch model to be trained.
+        trainset (continual.SplitMNIST): SplitMNIST dataset used for 
+            benchmarking continual learning.
+        fisher_matrices (dict{dict{torch.Tensor}}): Fisher information matrices.
+        opt_params (dict{dict{torch.Tensor}}): Optimal parameters from previous tasks.
+        batch_size (int): Desired batch size for minibatch. Note that we will split
+            this equally among the current tasks and previous tasks.
+        ewc_weight (float): Weight of consolidation regularizer.
+        optimizer (torch.optim.Optimizer): Optimizer for backpropagation.
+            Defaults to None.
+        criterion (torch.nn.Module): PyTorch loss function.
+        device (torch.device): The device for training.
+        validate_fn (): Validation function for on-the-fly validation.
+        valset (continual.SplitMNIST): Evaluation dataset for on-the-fly benchmarking.
+
+    Returns:
+        train_loss (list[float]): List of training losses for each batch.
+        val_loss (list[float]): List of validation losses for each batch.
+        val_error (list[float]): List of validation errors for each batch.
     """
     model = model.to(device)
     model.train()
-    running_loss = 0.0
-    data_size = len(dataset)
-    dataloader = DataLoader(dataset, batch_size, shuffle=True)
+
+    train_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_error = {task:[] for task in range(trainset.num_tasks())}
+
+    dataloader = DataLoader(trainset, batch_size, shuffle=True)
 
     if not optimizer:
         # Default optimizer if one is not provided
@@ -46,7 +71,7 @@ def train_ewc(
         loss = criterion(output, labels.to(device))
 
         # Regularize loss with Fisher Information Matrix
-        for task in range(dataset.get_current_task()):
+        for task in range(trainset.get_current_task()):
             for name, param in model.named_parameters():
                 fisher = fisher_matrices[task][name]
                 opt_param = opt_params[task][name]
@@ -55,10 +80,17 @@ def train_ewc(
         
         loss.backward()
         optimizer.step()
+        train_loss[trainset.get_current_task()].append(loss.item())
 
-        running_loss += loss.item()
+        # In-training validation
+        if validate_fn:
+            for task in range(trainset.get_current_task() + 1):
+                valset = valset.go_to_task(task)
+                vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
+                val_loss[task] += [vloss]
+                val_error[task] += [verror]
     
-    return running_loss / data_size
+    return train_loss, val_loss, val_error
 
 def ewc_update(
         model, dataset,

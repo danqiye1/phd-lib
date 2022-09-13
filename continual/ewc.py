@@ -8,6 +8,8 @@ from .utils import train_ewc, ewc_update
 from patterns.models import LeNet
 from patterns.utils import validate
 
+from pdb import set_trace as bp
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--max_epoch', type=int, default=10)
@@ -50,6 +52,11 @@ elif args.dataset == "PermutedMNIST":
 fisher_matrices = {}
 opt_params = {}
 
+# Setup metrics collection
+train_loss = {task: [] for task in range(trainset.num_tasks())}
+val_loss = {task: [] for task in range(evalset.num_tasks())}
+val_error = {task: [] for task in range(evalset.num_tasks())}
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
     trainloader = DataLoader(
@@ -60,34 +67,24 @@ for task in range(trainset.num_tasks()):
     )
 
     # Train with EWC regularized weights
-    # if task == 0:
-    #     for epoch in tqdm(range(config['epochs'])):
-    #         loss = train_ewc(
-    #                     model, trainset, config['batch_size'],
-    #                     fisher_matrices=fisher_matrices, 
-    #                     opt_params=opt_params, 
-    #                     ewc_weight=config['ewc_weight'],
-    #                     optimizer=optimizer,
-    #                     criterion=criterion,
-    #                     device=device)
-    # else:
-    #     loss = train_ewc(
-    #                     model, trainset, config['batch_size'],
-    #                     fisher_matrices=fisher_matrices, 
-    #                     opt_params=opt_params, 
-    #                     ewc_weight=config['ewc_weight'],
-    #                     optimizer=optimizer,
-    #                     criterion=criterion,
-    #                     device=device)
     for epoch in tqdm(range(config['epochs'])):
-        loss = train_ewc(
-                    model, trainset, config['batch_size'],
-                    fisher_matrices=fisher_matrices, 
-                    opt_params=opt_params, 
-                    ewc_weight=config['ewc_weight'],
-                    optimizer=optimizer,
-                    criterion=criterion,
-                    device=device)
+        loss, vloss, verror = train_ewc(
+                                            model, trainset, 
+                                            batch_size=config['batch_size'],
+                                            fisher_matrices=fisher_matrices, 
+                                            opt_params=opt_params, 
+                                            ewc_weight=config['ewc_weight'],
+                                            optimizer=optimizer,
+                                            criterion=criterion,
+                                            device=device,
+                                            validate_fn=validate,
+                                            valset=evalset)
+
+        # Update metrics
+        for key in loss:
+            train_loss[key] += loss[key]
+            val_loss[key] += vloss[key]
+            val_error[key] += verror[key]
 
     # Update fisher dict and optimal parameter dict
     fisher_matrices[task], opt_params[task] = ewc_update(
@@ -96,19 +93,8 @@ for task in range(trainset.num_tasks()):
                                     criterion=criterion,
                                     device=device)
 
-    # Evaluate error rate on current and previous tasks
-    for task in range(evalset.num_tasks()):
-        evalset = evalset.go_to_task(task)
-        vloss, verror = validate(
-                            model, evalset, config['batch_size'],
-                            criterion=criterion, 
-                            device=device
-                        )
-        tqdm.write(f"Evaluated task {evalset.get_current_task()}")
-        tqdm.write(
-            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
-            f"Validation error: {verror: .3f}")
-
     # Progress to next task
     trainset = trainset.next_task()
+
+bp()
     
