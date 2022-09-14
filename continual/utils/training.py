@@ -130,11 +130,13 @@ def ewc_update(
     return fisher_matrices, opt_params
 
 def rehearsal(
-        model, dataset,
+        model, trainset,
         batch_size=32,
         optimizer=None,
         criterion=torch.nn.CrossEntropyLoss(),
-        device=torch.device("cpu")
+        device=torch.device("cpu"),
+        validate_fn=None,
+        valset=None
     ):
     """ Training one epoch using the rehearsal strategy to mitigate catastrophic forgetting.
 
@@ -154,19 +156,23 @@ def rehearsal(
     """
     model = model.to(device)
 
+    train_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_error = {task:[] for task in range(trainset.num_tasks())}
+
     running_loss = 0.0
-    data_size = len(dataset)
-    current_task = dataset.get_current_task()
+    data_size = len(trainset)
+    current_task = trainset.get_current_task()
     task_batch_size = batch_size // (current_task + 1)
 
     # Get dataset of all prev task
     prevsets = []
     for task in range(current_task):
-        prevsets.append(dataset.go_to_task(task))
+        prevsets.append(trainset.go_to_task(task))
 
     # Initialize a dataloader
     trainloader = DataLoader(
-                    dataset=dataset, 
+                    dataset=trainset, 
                     batch_size=task_batch_size, 
                     shuffle=True, 
                     num_workers=4)
@@ -199,9 +205,17 @@ def rehearsal(
         loss.backward()
         optimizer.step()
 
-        running_loss += loss.item()
+        train_loss[trainset.get_current_task()].append(loss.item())
+
+        # In-training validation
+        if validate_fn:
+            for task in range(trainset.get_current_task() + 1):
+                valset = valset.go_to_task(task)
+                vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
+                val_loss[task] += [vloss]
+                val_error[task] += [verror]
     
-    return running_loss / data_size
+    return train_loss, val_loss, val_error
 
 def pseudo_rehearsal(
         model, dataset,
