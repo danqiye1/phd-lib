@@ -1,4 +1,5 @@
 import torch
+import json
 import argparse
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -7,6 +8,7 @@ from .datasets import SplitMNIST, PermutedMNIST
 from .utils import train_ewc, ewc_update
 from patterns.models import LeNet
 from patterns.utils import validate
+from matplotlib import pyplot as plt
 
 from pdb import set_trace as bp
 
@@ -66,25 +68,31 @@ for task in range(trainset.num_tasks()):
         num_workers=4
     )
 
+    if task == 0:
+        epochs = config['epochs']
+    else:
+        epochs = 1
+        
     # Train with EWC regularized weights
-    for epoch in tqdm(range(config['epochs'])):
+    for epoch in tqdm(range(epochs)):
         loss, vloss, verror = train_ewc(
-                                            model, trainset, 
-                                            batch_size=config['batch_size'],
-                                            fisher_matrices=fisher_matrices, 
-                                            opt_params=opt_params, 
-                                            ewc_weight=config['ewc_weight'],
-                                            optimizer=optimizer,
-                                            criterion=criterion,
-                                            device=device,
-                                            validate_fn=validate,
-                                            valset=evalset)
+                                    model, trainset, 
+                                    batch_size=config['batch_size'],
+                                    fisher_matrices=fisher_matrices, 
+                                    opt_params=opt_params, 
+                                    ewc_weight=config['ewc_weight'],
+                                    optimizer=optimizer,
+                                    criterion=criterion,
+                                    device=device,
+                                    validate_fn=validate,
+                                    valset=evalset)
 
         # Update metrics
         for key in loss:
             train_loss[key] += loss[key]
             val_loss[key] += vloss[key]
             val_error[key] += verror[key]
+
 
     # Update fisher dict and optimal parameter dict
     fisher_matrices[task], opt_params[task] = ewc_update(
@@ -96,5 +104,9 @@ for task in range(trainset.num_tasks()):
     # Progress to next task
     trainset = trainset.next_task()
 
-bp()
+plt.plot(val_error[0])
+plt.savefig("ewc_error.jpg")
+
+with open("ewc_error.json", 'w') as fp:
+    json.dump(val_error, fp)
     
