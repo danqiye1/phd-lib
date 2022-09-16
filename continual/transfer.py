@@ -3,6 +3,7 @@ Experiment of using transfer learning on multi-head models
 to mitigate catastrophic forgetting.
 """
 import torch
+import json
 import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
@@ -10,6 +11,7 @@ from .datasets import SplitMNIST
 from .utils import train_epoch
 from patterns.models import MultiHeadLeNet
 from patterns.utils import validate
+from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -40,28 +42,41 @@ evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transf
 device = torch.device(args.device_type)
 model = MultiHeadLeNet(num_classes=trainset.num_classes())
 
+# Setup metrics collection
+train_loss = {task: [] for task in range(trainset.num_tasks())}
+val_loss = {task: [] for task in range(evalset.num_tasks())}
+val_error = {task: [] for task in range(evalset.num_tasks())}
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-    # Train with epoch training
-    for epoch in tqdm(range(config['epochs'])):
-        loss = train_epoch(
-                    model, trainset,
-                    batch_size=config['batch_size'],
-                    device=device)
 
-    # Evaluate error rate on current and previous tasks
-    for task in range(trainset.get_current_task() + 1):
-        evalset = evalset.go_to_task(task)
-        vloss, verror = validate(
-                            model, evalset, config['batch_size'],
-                            device=device
-                        )
-        tqdm.write(f"Evaluated task {evalset.get_current_task()}")
-        tqdm.write(
-            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
-            f"Validation error: {verror: .3f}")
+    if task == 0:
+        epochs = config['epochs']
+    else:
+        epochs = 1
+    
+    # Train with epoch training
+    for epoch in tqdm(range(epochs)):
+        loss, vloss, verror = train_epoch(
+                                model, trainset,
+                                batch_size=config['batch_size'],
+                                device=device,
+                                validate_fn=validate,
+                                valset=evalset)
+
+        # Update metrics
+        for key in loss:
+            train_loss[key] += loss[key]
+            val_loss[key] += vloss[key]
+            val_error[key] += verror[key]
 
     # Progress to next task
     trainset = trainset.next_task()
     model.add_head(num_classes=trainset.num_classes())
+
+plt.plot(val_error[0])
+plt.savefig("results/transfer_error.jpg")
+
+with open("results/transfer_error.json", 'w') as fp:
+    json.dump(val_error, fp)
     

@@ -105,8 +105,8 @@ for task in range(trainset.num_tasks()):
     trainset = trainset.next_task()
 
 plt.plot(val_error[0])
-plt.savefig("ewc_error.jpg")
+plt.savefig("results/ewc_error.jpg")
 
-with open("ewc_error.json", 'w') as fp:
+with open("results/ewc_error.json", 'w') as fp:
     json.dump(val_error, fp)
     

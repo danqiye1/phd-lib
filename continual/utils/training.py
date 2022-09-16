@@ -160,8 +160,6 @@ def rehearsal(
     val_loss = {task:[] for task in range(trainset.num_tasks())}
     val_error = {task:[] for task in range(trainset.num_tasks())}
 
-    running_loss = 0.0
-    data_size = len(trainset)
     current_task = trainset.get_current_task()
     task_batch_size = batch_size // (current_task + 1)
 
@@ -314,11 +312,13 @@ def pseudo_rehearsal(
     return running_loss / data_size
 
 def train_epoch(
-        model, dataset,
+        model, trainset,
         batch_size=32,
         optimizer=None,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu"),
+        validate_fn=None,
+        valset=None
     ):
     """
     Multihead model training. 
@@ -328,21 +328,22 @@ def train_epoch(
     model = model.to(device)
     model.train()
 
-    running_loss = 0.0
+    train_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_error = {task:[] for task in range(trainset.num_tasks())}
+
 
     dataloader = DataLoader(
-        dataset,
+        trainset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=2
     )
 
     # Get the smallest label
-    for data in DataLoader(dataset, len(dataset)):
+    for data in DataLoader(trainset, len(trainset)):
         _, label = data
         min_label = label.min().item()
-
-    num_batches = len(dataloader)
 
     if not optimizer:
         # Default optimizer if one is not provided
@@ -367,6 +368,14 @@ def train_epoch(
         optimizer.step()
         
         # Gather running loss
-        running_loss += loss.item()
-        
-    return running_loss / num_batches
+        train_loss[trainset.get_current_task()].append(loss.item())
+
+        # In-training validation
+        if validate_fn:
+            for task in range(trainset.get_current_task() + 1):
+                valset = valset.go_to_task(task)
+                vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
+                val_loss[task] += [vloss]
+                val_error[task] += [verror]
+    
+    return train_loss, val_loss, val_error

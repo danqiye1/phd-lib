@@ -2,14 +2,15 @@
 Demo of Rehearsal Mechanism
 """
 import torch
+import json
 import argparse
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from .utils import rehearsal
 from patterns.models import LeNet
 from patterns.utils import validate
+from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -47,31 +48,42 @@ elif args.dataset == "PermutedMNIST":
     trainset = PermutedMNIST(args.data_dir, download=True, transform=transforms)
     evalset = PermutedMNIST(args.data_dir, train=False, download=True, transform=transforms)
 
+# Setup metrics collection
+train_loss = {task: [] for task in range(trainset.num_tasks())}
+val_loss = {task: [] for task in range(evalset.num_tasks())}
+val_error = {task: [] for task in range(evalset.num_tasks())}
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
 
-    # Train with rehearsal strategy
-    for epoch in tqdm(range(config['epochs'])):
-        loss = rehearsal(
-                    model, trainset,
-                    batch_size=config['batch_size'],
-                    optimizer=optimizer,
-                    criterion=criterion,
-                    device=device)
+    if task == 0:
+        epochs = config['epochs']
+    else:
+        epochs = 1
 
-    # Evaluate error rate on current and previous tasks
-    for task in range(evalset.num_tasks()):
-        evalset = evalset.go_to_task(task)
-        vloss, verror = validate(
-                    model, evalset, config['batch_size'],
-                    criterion=criterion, 
-                    device=device
-                )
-        tqdm.write(f"Evaluated task {task}")
-        tqdm.write(
-            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
-            f"Validation error: {verror: .3f}")
+    # Train with rehearsal strategy
+    for epoch in tqdm(range(epochs)):
+        loss, vloss, verror = rehearsal(
+                                model, trainset,
+                                batch_size=config['batch_size'],
+                                optimizer=optimizer,
+                                criterion=criterion,
+                                device=device,
+                                validate_fn=validate,
+                                valset=evalset)
+
+        # Update metrics
+        for key in loss:
+            train_loss[key] += loss[key]
+            val_loss[key] += vloss[key]
+            val_error[key] += verror[key]
 
     # Progress to next task
     trainset = trainset.next_task()
     
+
+plt.plot(val_error[0])
+plt.savefig("rehearsal_error.jpg")
+
+with open("reheasal_error.json", 'w') as fp:
+    json.dump(val_error, fp)
