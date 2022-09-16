@@ -7,7 +7,7 @@ from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, Normalize, ToTensor
 from avalanche.benchmarks.classic import SplitMNIST
 from avalanche.evaluation.metrics import accuracy_metrics, loss_metrics, forgetting_metrics
-from avalanche.training.supervised import EWC
+from avalanche.training.supervised import Replay
 from avalanche.models import LeNet5
 from avalanche.logging import InteractiveLogger, WandBLogger, CSVLogger
 from avalanche.training.plugins import EvaluationPlugin
@@ -24,7 +24,7 @@ parser.add_argument('--ewc_lambda', type=float, default=0.4)
 parser.add_argument('--data_dir', type=str, default='./')
 parser.add_argument('--device_type', type=str, default="cuda:0", choices=['cuda:0', 'cuda:1', 'cpu'])
 parser.add_argument('--dataset', type=str, default="SplitMNIST", choices=['SplitMNIST', 'PermutedMNIST'])
-parser.add_argument('--log_folder', type=str, default="./results/ewc")
+parser.add_argument('--log_folder', type=str, default="./results/rehearsal")
 args = parser.parse_args()
 
 transforms = Compose([
@@ -44,7 +44,7 @@ criterion = torch.nn.CrossEntropyLoss()
 
 loggers = [
     InteractiveLogger(), 
-    WandBLogger(project_name="ContinualML", run_name="EWC"),
+    WandBLogger(project_name="ContinualML", run_name="Rehearsal"),
     CSVLogger(log_folder=args.log_folder)
 ]
 
@@ -57,13 +57,13 @@ eval_plugin = EvaluationPlugin(
     benchmark=benchmark
 )
 
-strategy = EWC(
-            model, optimizer, criterion, 
-            ewc_lambda=args.ewc_lambda,
+strategy = Replay(
+            model, optimizer, criterion,
             train_mb_size=args.batch_size,
             train_epochs=args.max_epoch,
             eval_mb_size=args.batch_size,
-            evaluator=eval_plugin)
+            evaluator=eval_plugin,
+            eval_every=1)
 
 
 tqdm.write("Starting experiment...")
