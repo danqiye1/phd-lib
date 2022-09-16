@@ -14,7 +14,7 @@ class SplitMNIST(torchvision.datasets.MNIST):
         download=False, 
         transform=None, 
         target_transform=None,
-        tasks=[[0,1,2,3,4,5],[6,7],[8,9]],
+        tasks=[[0,1],[2,3],[4,5],[6,7],[8,9]],
     ):
         """ Constructor
         
