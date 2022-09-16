@@ -3,3 +3,4 @@ __pycache__
 MNIST
 .ipynb_checkpoints
 results
+wandb
