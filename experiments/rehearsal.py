@@ -57,19 +57,23 @@ eval_plugin = EvaluationPlugin(
     benchmark=benchmark
 )
 
-strategy = Replay(
+
+tqdm.write("Starting experiment...")
+results = []
+num_exp = len(benchmark.train_stream)
+for i, exp in tqdm(enumerate(benchmark.train_stream), total=num_exp):
+
+    train_epochs = args.max_epoch if i == 0 else 1
+
+    strategy = Replay(
             model, optimizer, criterion,
             train_mb_size=args.batch_size,
-            train_epochs=args.max_epoch,
+            train_epochs=train_epochs,
             eval_mb_size=args.batch_size,
             evaluator=eval_plugin,
             eval_every=1)
 
-
-tqdm.write("Starting experiment...")
-results = []
-for exp in tqdm(benchmark.train_stream):
-    res = strategy.train(exp)
+    res = strategy.train(exp, eval_streams=[benchmark.test_stream])
     tqdm.write("Training completed!")
     tqdm.write("Computing accuracy on test set...")
     results.append(strategy.eval(benchmark.test_stream))
