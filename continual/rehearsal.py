@@ -81,7 +81,7 @@ for task in range(trainset.num_tasks()):
             val_error[key] += verror[key]
 
     # Record number of iterations for each task
-    boundaries[task] = len(val_error)
+    boundaries[task] = len(train_loss[task]) if task == 0 else (len(train_loss[task]) + boundaries[task - 1])
 
     # Progress to next task
     trainset = trainset.next_task()
@@ -89,5 +89,8 @@ for task in range(trainset.num_tasks()):
 
 with open("results/reheasal_error.json", 'w') as fp:
     json.dump(val_error, fp)
+
+with open("results/rehearsal_boundaries.json", "w") as fp:
+    json.dump(boundaries, fp)
 
 plot_task_error(0, val_error, boundaries=boundaries, savefile="results/rehearsal")

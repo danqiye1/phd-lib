@@ -97,7 +97,7 @@ for task in range(trainset.num_tasks()):
             val_error[key] += verror[key]
 
     # Record number of iterations for each task
-    boundaries[task] = len(train_loss[task])
+    boundaries[task] = len(train_loss[task]) if task == 0 else (len(train_loss[task]) + boundaries[task - 1])
 
     # Update fisher dict and optimal parameter dict
     fisher_matrices[task], opt_params[task] = ewc_update(
@@ -111,10 +111,12 @@ for task in range(trainset.num_tasks()):
 
 # plt.plot(val_error[0])
 # plt.savefig("results/ewc_error.jpg")
-bp()
 
 with open("results/ewc_error.json", 'w') as fp:
     json.dump(val_error, fp)
+
+with open("results/rehearsal_boundaries.json", "w") as fp:
+    json.dump(boundaries, fp)
 
 plot_task_error(0, val_error, boundaries=boundaries, savefile="results/ewc")
     
