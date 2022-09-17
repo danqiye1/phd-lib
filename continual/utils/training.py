@@ -216,13 +216,15 @@ def rehearsal(
     return train_loss, val_loss, val_error
 
 def pseudo_rehearsal(
-        model, dataset,
+        model, trainset,
         batch_size=32,
         optimizer=None,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu"),
         mode="uniform",
-        dist_params=(0.1307, 0.3081)
+        dist_params=(0.1307, 0.3081),
+        validate_fn=None,
+        valset=None
     ):
     """ Training one epoch using the pseudo rehearsal strategy to mitigate catastrophic forgetting.
 
@@ -252,9 +254,11 @@ def pseudo_rehearsal(
     # Make a copy of old model for pseudo item synthesis
     old_model = deepcopy(model)
 
-    running_loss = 0.0
-    data_size = len(dataset)
-    current_task = dataset.get_current_task()
+    current_task = trainset.get_current_task()
+
+    train_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_loss = {task:[] for task in range(trainset.num_tasks())}
+    val_error = {task:[] for task in range(trainset.num_tasks())}
 
     # Get current task's batch size and the number of
     # pseudo items to generate.
@@ -263,7 +267,7 @@ def pseudo_rehearsal(
 
     # Initialize a dataloader
     trainloader = DataLoader(
-                    dataset=dataset, 
+                    dataset=trainset, 
                     batch_size=task_batch_size, 
                     shuffle=True, 
                     num_workers=4)
@@ -307,9 +311,17 @@ def pseudo_rehearsal(
         loss.backward()
         optimizer.step()
 
-        running_loss += loss.item()
+        train_loss[trainset.get_current_task()].append(loss.item())
+
+        # In-training validation
+        if validate_fn:
+            for task in range(trainset.get_current_task() + 1):
+                valset = valset.go_to_task(task)
+                vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
+                val_loss[task] += [vloss]
+                val_error[task] += [verror]
     
-    return running_loss / data_size
+    return train_loss, val_loss, val_error
 
 def train_multihead(
         model, trainset,

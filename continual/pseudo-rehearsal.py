@@ -1,13 +1,13 @@
 """
 Demo of Pseudo-rehearsal Mechanism
 """
+import json
 import torch
 import argparse
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
-from .datasets import SplitMNIST
-from .utils import pseudo_rehearsal
+from .datasets import SplitMNIST, PermutedMNIST
+from .utils import pseudo_rehearsal, plot_task_error
 from patterns.models import LeNet
 from patterns.utils import validate
 
@@ -20,6 +20,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--data_dir', type=str, default='./')
 parser.add_argument('--device_type', type=str, default="cuda:0", choices=['cuda:0', 'cuda:1', 'cpu'])
 parser.add_argument('--mode', type=str, default='uniform', choices=['uniform', 'normal'])
+parser.add_argument('--dataset', type=str, default="SplitMNIST", choices=['SplitMNIST', 'PermutedMNIST'])
 args = parser.parse_args()
 
 # Hyperparameters configuration
@@ -41,44 +42,56 @@ transforms = Compose([
     Pad(2), # For LeNet input
     Normalize(mean=(0.1307,), std=(0.3081,))
 ])
-trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
-evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
+if args.dataset == 'SplitMNIST':
+    trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
+    evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
+elif args.dataset == "PermutedMNIST":
+    trainset = PermutedMNIST(args.data_dir, download=True, transform=transforms)
+    evalset = PermutedMNIST(args.data_dir, train=False, download=True, transform=transforms)
+
+# Setup metrics collection
+train_loss = {task: [] for task in range(trainset.num_tasks())}
+val_loss = {task: [] for task in range(evalset.num_tasks())}
+val_error = {task: [] for task in range(evalset.num_tasks())}
+
+# Data structure for recording iteration boundaries for each task.
+boundaries = [0 for _ in range(evalset.num_tasks())]
 
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-    # Train with pseudo rehearsal strategy
-    if task == 0:
-        for epoch in tqdm(range(config['epochs'])):
-            loss = pseudo_rehearsal(
-                        model, trainset,
-                        batch_size=config['batch_size'],
-                        optimizer=optimizer,
-                        criterion=criterion,
-                        device=device,
-                        mode=config['mode'])
-    else:
-        loss = pseudo_rehearsal(
-                    model, trainset,
-                    batch_size=config['batch_size'],
-                    optimizer=optimizer,
-                    criterion=criterion,
-                    device=device,
-                    mode=config['mode'])
 
-    # Evaluate error rate on current and previous tasks
-    for task in range(trainset.get_current_task() + 1):
-        vloss, verror = validate(
-                            model, evalset, config['batch_size'],
-                            criterion=criterion, 
-                            device=device
-                        )
-        tqdm.write(f"Evaluated task {task}")
-        tqdm.write(
-            f"Training loss: {loss: .3f}, Validation loss: {vloss: .3f}, " 
-            f"Validation error: {verror: .3f}")
-        evalset = evalset.next_task()
+    if task == 0:
+        epochs = config['epochs']
+    else:
+        epochs = 1
+    # Train with pseudo rehearsal strategy
+    for epoch in tqdm(range(config['epochs'])):
+        loss, vloss, verror = pseudo_rehearsal(
+                                model, trainset,
+                                batch_size=config['batch_size'],
+                                optimizer=optimizer,
+                                criterion=criterion,
+                                device=device,
+                                mode=config['mode'],
+                                validate_fn=validate,
+                                valset=evalset)
+
+    # Update metrics
+        for key in loss:
+            train_loss[key] += loss[key]
+            val_loss[key] += vloss[key]
+            val_error[key] += verror[key]
+
+    # Record number of iterations for each task
+    boundaries[task] = len(train_loss[task]) if task == 0 else (len(train_loss[task]) + boundaries[task - 1])
 
     # Progress to next task
     trainset = trainset.next_task()
-    evalset = evalset.restart()
-    
+
+with open("results/pseudo_error.json", 'w') as fp:
+    json.dump(val_error, fp)
+
+with open("results/pseudo_boundaries.json", "w") as fp:
+    json.dump(boundaries, fp)
+
+plot_task_error(0, val_error, boundaries=boundaries, savefile="results/pseudo")
