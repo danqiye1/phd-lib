@@ -5,7 +5,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
-from .utils import train_ewc, ewc_update
+from .utils import train_ewc, ewc_update, plot_task_error
 from patterns.models import LeNet
 from patterns.utils import validate
 from matplotlib import pyplot as plt
@@ -59,6 +59,9 @@ train_loss = {task: [] for task in range(trainset.num_tasks())}
 val_loss = {task: [] for task in range(evalset.num_tasks())}
 val_error = {task: [] for task in range(evalset.num_tasks())}
 
+# Data structure for recording iteration boundaries for each task.
+boundaries = [0 for _ in range(evalset.num_tasks())]
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
     trainloader = DataLoader(
@@ -93,6 +96,8 @@ for task in range(trainset.num_tasks()):
             val_loss[key] += vloss[key]
             val_error[key] += verror[key]
 
+    # Record number of iterations for each task
+    boundaries[task] = len(train_loss[task])
 
     # Update fisher dict and optimal parameter dict
     fisher_matrices[task], opt_params[task] = ewc_update(
@@ -104,9 +109,12 @@ for task in range(trainset.num_tasks()):
     # Progress to next task
     trainset = trainset.next_task()
 
-plt.plot(val_error[0])
-plt.savefig("results/ewc_error.jpg")
+# plt.plot(val_error[0])
+# plt.savefig("results/ewc_error.jpg")
+bp()
 
 with open("results/ewc_error.json", 'w') as fp:
     json.dump(val_error, fp)
+
+plot_task_error(0, val_error, boundaries=boundaries, savefile="results/ewc")
     

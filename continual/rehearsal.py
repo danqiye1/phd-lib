@@ -7,10 +7,9 @@ import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
-from .utils import rehearsal
+from .utils import rehearsal, plot_task_error
 from patterns.models import LeNet
 from patterns.utils import validate
-from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -88,10 +87,7 @@ for task in range(trainset.num_tasks()):
     trainset = trainset.next_task()
     
 
-plt.plot(val_error[0])
-for x in boundaries:
-    plt.axvline(x, color='r')
-plt.savefig("rehearsal_error.jpg")
-
-with open("reheasal_error.json", 'w') as fp:
+with open("results/reheasal_error.json", 'w') as fp:
     json.dump(val_error, fp)
+
+plot_task_error(0, val_error, boundaries=boundaries, savefile="results/rehearsal")

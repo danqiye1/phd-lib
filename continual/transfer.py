@@ -8,7 +8,7 @@ import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST
-from .utils import train_multihead
+from .utils import train_multihead, plot_task_error
 from patterns.models import MultiHeadLeNet
 from patterns.utils import validate
 from matplotlib import pyplot as plt
@@ -47,6 +47,9 @@ train_loss = {task: [] for task in range(trainset.num_tasks())}
 val_loss = {task: [] for task in range(evalset.num_tasks())}
 val_error = {task: [] for task in range(evalset.num_tasks())}
 
+# Data structure for recording iteration boundaries for each task.
+boundaries = [0 for _ in range(evalset.num_tasks())]
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
 
@@ -70,13 +73,18 @@ for task in range(trainset.num_tasks()):
             val_loss[key] += vloss[key]
             val_error[key] += verror[key]
 
+    # Record number of iterations for each task
+    boundaries[task] = len(val_error)
+
     # Progress to next task
     trainset = trainset.next_task()
     model.add_head(num_classes=trainset.num_classes())
 
-plt.plot(val_error[0])
-plt.savefig("results/transfer_error.jpg")
+# plt.plot(val_error[0])
+# plt.savefig("results/transfer_error.jpg")
 
-with open("results/transfer_error.json", 'w') as fp:
+with open("results/multihead_error.json", 'w') as fp:
     json.dump(val_error, fp)
+
+plot_task_error(0, val_error, boundaries=boundaries, savefile="results/multihead")
     
