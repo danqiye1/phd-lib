@@ -53,6 +53,9 @@ train_loss = {task: [] for task in range(trainset.num_tasks())}
 val_loss = {task: [] for task in range(evalset.num_tasks())}
 val_error = {task: [] for task in range(evalset.num_tasks())}
 
+# Data structure for recording iteration boundaries for each task.
+boundaries = [0 for _ in range(evalset.num_tasks())]
+
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
 
@@ -78,11 +81,16 @@ for task in range(trainset.num_tasks()):
             val_loss[key] += vloss[key]
             val_error[key] += verror[key]
 
+    # Record number of iterations for each task
+    boundaries[task] = len(val_error)
+
     # Progress to next task
     trainset = trainset.next_task()
     
 
 plt.plot(val_error[0])
+for x in boundaries:
+    plt.axvline(x, color='r')
 plt.savefig("rehearsal_error.jpg")
 
 with open("reheasal_error.json", 'w') as fp:
