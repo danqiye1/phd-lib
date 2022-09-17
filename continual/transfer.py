@@ -8,7 +8,7 @@ import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST
-from .utils import train_epoch
+from .utils import train_multihead
 from patterns.models import MultiHeadLeNet
 from patterns.utils import validate
 from matplotlib import pyplot as plt
@@ -57,7 +57,7 @@ for task in range(trainset.num_tasks()):
     
     # Train with epoch training
     for epoch in tqdm(range(epochs)):
-        loss, vloss, verror = train_epoch(
+        loss, vloss, verror = train_multihead(
                                 model, trainset,
                                 batch_size=config['batch_size'],
                                 device=device,

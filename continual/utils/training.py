@@ -311,7 +311,7 @@ def pseudo_rehearsal(
     
     return running_loss / data_size
 
-def train_epoch(
+def train_multihead(
         model, trainset,
         batch_size=32,
         optimizer=None,
