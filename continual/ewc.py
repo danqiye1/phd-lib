@@ -115,7 +115,7 @@ for task in range(trainset.num_tasks()):
 with open("results/ewc_error.json", 'w') as fp:
     json.dump(val_error, fp)
 
-with open("results/rehearsal_boundaries.json", "w") as fp:
+with open("results/ewc_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
 
 plot_task_error(0, val_error, boundaries=boundaries, savefile="results/ewc")
