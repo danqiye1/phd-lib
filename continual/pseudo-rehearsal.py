@@ -65,7 +65,7 @@ for task in range(trainset.num_tasks()):
     else:
         epochs = 1
     # Train with pseudo rehearsal strategy
-    for epoch in tqdm(range(config['epochs'])):
+    for epoch in tqdm(range(epochs)):
         loss, vloss, verror = pseudo_rehearsal(
                                 model, trainset,
                                 batch_size=config['batch_size'],
@@ -76,7 +76,7 @@ for task in range(trainset.num_tasks()):
                                 validate_fn=validate,
                                 valset=evalset)
 
-    # Update metrics
+        # Update metrics
         for key in loss:
             train_loss[key] += loss[key]
             val_loss[key] += vloss[key]
