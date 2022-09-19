@@ -15,25 +15,29 @@ class LeNet(nn.Module):
 
 class MultiHeadLeNet(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, priors=[0]):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
         self.heads = nn.ModuleList([LeNetHead(num_classes)])
+        # Prior distribution of each task
+        self.priors = priors
 
     def forward(self, img):
         X = self.base(img)
         if self.training:
             X = self.heads[-1](X)
+            self.priors[-1] += img.size(0)
         else:
             outputs = []
-            for head in self.heads:
-                outputs.append(head(X))
+            for idx, head in enumerate(self.heads):
+                outputs.append(torch.softmax(head(X), dim=1) * self.priors[idx] / sum(self.priors))
             X = torch.cat(outputs, dim=1)
         return X
 
     def add_head(self, num_classes):
         """ Add head for a new class """
         self.heads.append(LeNetHead(num_classes))
+        self.priors.append(0)
 
 class LeNetBase(nn.Module):
     """ Base of Multi-head LeNet5 Model """
