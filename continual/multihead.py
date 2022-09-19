@@ -7,7 +7,7 @@ import json
 import argparse
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
-from .datasets import SplitMNIST
+from .datasets import SplitMNIST, PermutedMNIST
 from .utils import train_multihead, plot_task_error
 from patterns.models import MultiHeadLeNet
 from patterns.utils import validate
@@ -21,6 +21,7 @@ parser.add_argument('--wandb_entity', type=str, default=None)
 parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--data_dir', type=str, default='./')
 parser.add_argument('--device_type', type=str, default="cuda:0", choices=['cuda:0', 'cuda:1', 'cpu'])
+parser.add_argument('--dataset', type=str, default="SplitMNIST", choices=['SplitMNIST', 'PermutedMNIST'])
 args = parser.parse_args()
 
 # Hyperparameters configuration
@@ -35,8 +36,13 @@ transforms = Compose([
     Pad(2), # For LeNet input
     Normalize(mean=(0.1307,), std=(0.3081,))
 ])
-trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
-evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
+
+if args.dataset == "SplitMNIST":
+    trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
+    evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
+elif args.dataset == "PermutedMNIST":
+    trainset = PermutedMNIST(args.data_dir, download=True, transform=transforms)
+    evalset = PermutedMNIST(args.data_dir, train=False, download=True, transform=transforms)
 
 # Setup training
 device = torch.device(args.device_type)
