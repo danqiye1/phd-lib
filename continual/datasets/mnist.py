@@ -188,7 +188,7 @@ class PermutedMNIST(torchvision.datasets.MNIST):
 
     def num_classes(self):
         """ Get the number of classes for current task """
-        return len(self.targets[self.get_current_task()].unique())
+        return len(self.targets.unique())
 
     def next_task(self):
         return self.go_to_task(self.current_experience + 1)
