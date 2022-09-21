@@ -15,7 +15,7 @@ class LeNet(nn.Module):
 
 class MultiHeadLeNet(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, num_classes=10, priors=[0], attention=True):
+    def __init__(self, num_classes=10, priors=[0], attention=False):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
         self.heads = nn.ModuleList([LeNetHead(num_classes)])
@@ -43,7 +43,8 @@ class MultiHeadLeNet(nn.Module):
         else:
             outputs = []
             for idx, head in enumerate(self.heads):
-                X = X * self.mask(idx).expand_as(X)
+                if self.use_attention:
+                    X = X * self.mask(idx).expand_as(X)
                 outputs.append(torch.softmax(head(X), dim=1) * self.priors[idx] / sum(self.priors))
             X = torch.cat(outputs, dim=1)
         return X
