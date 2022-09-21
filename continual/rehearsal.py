@@ -93,4 +93,4 @@ with open("results/reheasal_error.json", 'w') as fp:
 with open("results/rehearsal_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
 
-plot_task_error(0, val_error, boundaries=boundaries, savefile="results/rehearsal")
+plot_task_error(0, val_error, boundaries=boundaries, strategy="results/rehearsal")

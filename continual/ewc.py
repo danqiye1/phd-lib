@@ -118,5 +118,5 @@ with open("results/ewc_error.json", 'w') as fp:
 with open("results/ewc_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
 
-plot_task_error(0, val_error, boundaries=boundaries, savefile="results/ewc")
+plot_task_error(0, val_error, boundaries=boundaries, strategy="results/ewc")
     

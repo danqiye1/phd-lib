@@ -93,5 +93,5 @@ with open("results/multihead_error.json", 'w') as fp:
 with open("results/multihead_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
 
-plot_task_error(0, val_error, boundaries=boundaries, savefile="results/multihead")
+plot_task_error(0, val_error, boundaries=boundaries, strategy="results/multihead")
     
