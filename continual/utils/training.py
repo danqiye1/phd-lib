@@ -161,7 +161,6 @@ def rehearsal(
     val_error = {task:[] for task in range(trainset.num_tasks())}
 
     current_task = trainset.get_current_task()
-    task_batch_size = batch_size // (current_task + 1)
 
     # Get dataset of all prev task
     prevsets = []
@@ -171,7 +170,7 @@ def rehearsal(
     # Initialize a dataloader
     trainloader = DataLoader(
                     dataset=trainset, 
-                    batch_size=task_batch_size, 
+                    batch_size=batch_size,
                     shuffle=True, 
                     num_workers=4)
 
@@ -184,7 +183,7 @@ def rehearsal(
 
         # Sample datasets of prev tasks and mix
         for prev_data in prevsets:
-            indices = random.sample(range(0, len(prev_data)), task_batch_size)
+            indices = random.sample(range(0, len(prev_data)), batch_size)
             for idx in indices:
                 prev_img, prev_label = prev_data[idx]
                 imgs = torch.cat((imgs, prev_img.unsqueeze(0)))
@@ -254,21 +253,14 @@ def pseudo_rehearsal(
     # Make a copy of old model for pseudo item synthesis
     old_model = deepcopy(model)
 
-    current_task = trainset.get_current_task()
-
     train_loss = {task:[] for task in range(trainset.num_tasks())}
     val_loss = {task:[] for task in range(trainset.num_tasks())}
     val_error = {task:[] for task in range(trainset.num_tasks())}
 
-    # Get current task's batch size and the number of
-    # pseudo items to generate.
-    task_batch_size = batch_size // (current_task + 1)
-    num_items = batch_size - task_batch_size
-
     # Initialize a dataloader
     trainloader = DataLoader(
                     dataset=trainset, 
-                    batch_size=task_batch_size, 
+                    batch_size=batch_size, 
                     shuffle=True, 
                     num_workers=4)
 
@@ -284,7 +276,7 @@ def pseudo_rehearsal(
         img_dims = imgs[0].unsqueeze(0).size()
 
         # Generate pseudoitems and mix
-        for _ in range(num_items):
+        for _ in range(batch_size):
             if mode == "uniform":
                 item = torch.rand(img_dims, device=device)
             elif mode == "normal":
