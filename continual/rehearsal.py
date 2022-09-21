@@ -87,7 +87,7 @@ for task in range(trainset.num_tasks()):
     trainset = trainset.next_task()
     
 
-with open("results/reheasal_error.json", 'w') as fp:
+with open("results/rehearsal_error.json", 'w') as fp:
     json.dump(val_error, fp)
 
 with open("results/rehearsal_boundaries.json", "w") as fp:
