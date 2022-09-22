@@ -35,7 +35,9 @@ class SplitMNIST(torchvision.datasets.MNIST):
             tasks (List[List[int]]): Define how to separate the dataset into tasks.
                 Each List contains the labels to be included in that task. 
                 If an empty list is provided, dataset will be equivalent to
-                a normal MNIST. Defaults to [[0,1,2,3,4,5],[6],[7],[8],[9]].
+                a normal MNIST. Defaults to [[0,1],[2,3],[4,5],[6,7],[8,9]]. Note
+                if you need MNIST as a whole, you can pass [[0,1,2,3,4,5,6,7,8,9]]
+                as a single task.
         """
         super().__init__(
             root, 

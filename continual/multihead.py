@@ -5,13 +5,13 @@ to mitigate catastrophic forgetting.
 import torch
 import json
 import argparse
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from .utils import train_multihead, plot_task_error
 from .models import MultiHeadLeNet
-from patterns.utils import validate
-from matplotlib import pyplot as plt
+from patterns.utils import validate, confusion_matrix
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -47,7 +47,7 @@ elif args.dataset == "PermutedMNIST":
 
 # Setup training
 device = torch.device(args.device_type)
-model = MultiHeadLeNet(num_classes=trainset.num_classes(), attention=args.use_attention)
+model = MultiHeadLeNet(attention=args.use_attention, device=device).to(device)
 
 # Setup metrics collection
 train_loss = {task: [] for task in range(trainset.num_tasks())}
@@ -59,7 +59,7 @@ boundaries = [0 for _ in range(evalset.num_tasks())]
 
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-
+    model.add_head(num_classes=trainset.num_classes())
     if task == 0:
         epochs = config['epochs']
     else:
@@ -85,7 +85,18 @@ for task in range(trainset.num_tasks()):
 
     # Progress to next task
     trainset = trainset.next_task()
-    model.add_head(num_classes=trainset.num_classes())
+    
+testset = SplitMNIST(
+            args.data_dir,
+            train=False, 
+            transform=transforms, 
+            tasks=[[0,1,2,3,4,5,6,7,8,9]])
+
+plt.figure("confusion")
+confusion_display = confusion_matrix(model, testset, device=device)
+confusion_display.plot()
+plt.savefig("results/multihead_confusion.jpg")
+
 
 with open("results/multihead_error.json", 'w') as fp:
     json.dump(val_error, fp)
