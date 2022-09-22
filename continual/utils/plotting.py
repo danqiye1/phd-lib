@@ -21,7 +21,7 @@ def plot_task_error(
     # xend is always the total length of the first task
     # xstart is whatever boundary of the previous task
     xstart = (boundaries[int(task_num) - 1] if int(task_num) else 0)
-    xend = len(val_error['0'])
+    xend = len(val_error[0])
     xaxis = np.arange(xstart, xend)
     plt.plot(xaxis, val_error[task_num], label=strategy)
     
