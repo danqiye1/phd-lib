@@ -9,7 +9,7 @@ from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from .utils import train_multihead, plot_task_error
-from patterns.models import MultiHeadLeNet
+from .models import MultiHeadLeNet
 from patterns.utils import validate
 from matplotlib import pyplot as plt
 
