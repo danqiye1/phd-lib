@@ -4,16 +4,19 @@ from patterns.models import LeNetBase, LeNetHead
 
 class MultiHeadLeNet(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, num_classes=10, priors=[0], attention=False):
+    def __init__(self, priors=[0], attention=False, device=torch.device("cpu")):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
-        self.heads = nn.ModuleList([LeNetHead(num_classes)])
+        self.heads = nn.ModuleList([])
         # Prior distribution of each task
         self.priors = priors
         # Keep track of the number of tasks
         self.task_embeddings = torch.nn.Embedding(1, 84)
         self.gate = torch.nn.Sigmoid()
         self.use_attention = attention
+
+        # Keep track of which device model is on
+        self.device = device
 
     def forward(self, img):
         """ Forward pass
@@ -47,7 +50,7 @@ class MultiHeadLeNet(nn.Module):
         """ Add head for a new class """
         self.heads.append(LeNetHead(num_classes))
         old_embedding_weights = self.task_embeddings.weight.clone()
-        new_embedding_weights = torch.nn.Embedding(1, 84).weight.clone().cuda()
+        new_embedding_weights = torch.nn.Embedding(1, 84).weight.clone().to(self.device)
         self.task_embeddings = torch.nn.Embedding(len(self.heads), 84)
         self.task_embeddings.weight = torch.nn.Parameter(
                                         torch.cat((old_embedding_weights, new_embedding_weights)))
