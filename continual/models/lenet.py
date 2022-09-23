@@ -4,7 +4,7 @@ from patterns.models import LeNetBase, LeNetHead
 
 class MultiHeadLeNet(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, priors=[0], attention=False, device=torch.device("cpu")):
+    def __init__(self, priors=[], attention=False, device=torch.device("cpu")):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
         self.heads = nn.ModuleList([])
@@ -38,6 +38,7 @@ class MultiHeadLeNet(nn.Module):
                 if self.use_attention:
                     X = X * self.mask(idx).expand_as(X)
                 outputs.append(torch.softmax(head(X), dim=1) * self.priors[idx] / sum(self.priors))
+
             X = torch.cat(outputs, dim=1)
         return X
 
