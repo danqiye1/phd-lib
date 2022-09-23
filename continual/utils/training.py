@@ -111,6 +111,8 @@ def ewc_update(
 
     opt_params = {}
     fisher_matrices = {}
+    for n, p in model.named_parameters():
+        fisher_matrices[n] = p.data.clone().zero_()
 
     model.train()
     # accumulating gradients
@@ -121,11 +123,13 @@ def ewc_update(
         loss.backward()
         optimizer.zero_grad()
 
-    # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
-    # We only want the diagonals of the FIM which is just the square of our gradients.
+        # Gradients accumulated can be used to calculate Fisher Information Matrix (FIM)
+        # We only want the diagonals of the FIM which is just the square of our gradients.
+        for name, param in model.named_parameters():
+            fisher_matrices[name] += param.grad.data.clone().pow(2) / len(dataset)
+
     for name, param in model.named_parameters():
         opt_params[name] = param.data.clone()
-        fisher_matrices[name] = param.grad.data.clone().pow(2) / len(dataset)
 
     return fisher_matrices, opt_params
 
