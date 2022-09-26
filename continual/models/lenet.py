@@ -32,4 +32,3 @@ class MultiHeadLeNet(nn.Module):
     def add_head(self, num_classes):
         """ Add head for a new class """
         self.heads.append(LeNetHead(num_classes))
-        self.priors.append(0)
