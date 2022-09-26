@@ -8,8 +8,6 @@ class MultiHeadLeNet(nn.Module):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
         self.heads = nn.ModuleList([])
-        # Prior distribution of each task
-        self.priors = priors
 
         # Keep track of which device model is on
         self.device = device
@@ -23,11 +21,10 @@ class MultiHeadLeNet(nn.Module):
         X = self.base(img)
         if self.training:
             X = self.heads[-1](X)
-            self.priors[-1] += img.size(0)
         else:
             outputs = []
-            for idx, head in enumerate(self.heads):
-                outputs.append(torch.softmax(head(X), dim=1) * self.priors[idx] / sum(self.priors))
+            for _, head in enumerate(self.heads):
+                outputs.append(head(X))
 
             X = torch.cat(outputs, dim=1)
         return X
