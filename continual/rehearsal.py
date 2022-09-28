@@ -8,6 +8,7 @@ from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from .utils import rehearsal, plot_task_error
+from .models import MLP
 from patterns.models import LeNet
 from patterns.utils import validate
 
@@ -20,6 +21,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--data_dir', type=str, default='./')
 parser.add_argument('--device_type', type=str, default="cuda:0", choices=['cuda:0', 'cuda:1', 'cpu'])
 parser.add_argument('--dataset', type=str, default="SplitMNIST", choices=['SplitMNIST', 'PermutedMNIST'])
+parser.add_argument('--model', type=str, default='lenet', choices=['lenet', 'mlp'])
 args = parser.parse_args()
 
 # Hyperparameters configuration
@@ -30,16 +32,22 @@ config = {
 }
 
 # Setup training
-model = LeNet()
+model = LeNet() if args.model == 'lenet' else MLP()
 optimizer = torch.optim.SGD(model.parameters(), lr=config['learning_rate'])
 criterion = torch.nn.CrossEntropyLoss()
 device = torch.device(args.device_type)
 
-transforms = Compose([
-    ToTensor(),
-    Pad(2), # For LeNet input
-    Normalize(mean=(0.1307,), std=(0.3081,))
-])
+if args.model == 'lenet':
+    transforms = Compose([
+        ToTensor(),
+        Pad(2),
+        Normalize(mean=(0.1307,), std=(0.3081,))
+    ])
+else:
+    transforms = Compose([
+        ToTensor(),
+        Normalize(mean=(0.1307,), std=(0.3081,))
+    ])
 if args.dataset == 'SplitMNIST':
     trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
     evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
