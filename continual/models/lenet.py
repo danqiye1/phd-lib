@@ -4,7 +4,7 @@ from patterns.models import LeNetBase, LeNetHead
 
 class MultiHeadLeNet(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, priors=[], device=torch.device("cpu")):
+    def __init__(self, device=torch.device("cpu")):
         super(MultiHeadLeNet, self).__init__()
         self.base = LeNetBase()
         self.heads = nn.ModuleList([])
@@ -24,11 +24,14 @@ class MultiHeadLeNet(nn.Module):
         else:
             outputs = []
             for _, head in enumerate(self.heads):
-                outputs.append(head(X))
+                outputs.append(torch.softmax(head(X), dim=1))
 
             X = torch.cat(outputs, dim=1)
         return X
 
     def add_head(self, num_classes):
         """ Add head for a new class """
+        # This fix part of the issue
+        for head in self.heads:
+            head.requires_grad_(False)
         self.heads.append(LeNetHead(num_classes))
