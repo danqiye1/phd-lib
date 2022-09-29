@@ -67,22 +67,44 @@ def train_gan(
     for data in tqdm(dataloader):
         imgs, _ = data
         
+        #######################
+        # Train Discriminator #
+        #######################
+
+        optim_d.zero_grad()
+
+        # Sample random latent vector
+        # and generate fake images
+        z = torch.randn((imgs.size(0), feature_size, 1, 1), device=device)
+        fake_imgs = generator(z)
+        
+        # Generate labels for fake and real images
+        label_as_real = torch.full((imgs.size(0),), 1, dtype=torch.float, device=device)
+        label_as_fake = torch.full((imgs.size(0),), 0, dtype=torch.float, device=device)
+
+        # Forward pass on discriminator.
+        # fake_imgs are detached to prevent gradient flow to generator.
+        loss_on_real = criterion(discriminator(imgs.to(device)).squeeze(), label_as_real)
+        loss_on_fake = criterion(discriminator(fake_imgs.detach()).squeeze(), label_as_fake)
+
+        loss_on_real.backward()
+        loss_on_fake.backward()
+        optim_d.step()
+
+        loss = loss_on_real + loss_on_fake
+
+        running_d_loss += loss.item()
+
         #########################
         # Training of Generator #
         #########################
 
         optim_g.zero_grad()
-
-        # Sample random latent vector
-        # and generate fake labels
-        z = torch.randn((imgs.size(0), feature_size, 1, 1), device=device)
-        labels = torch.full((imgs.size(0),), 1, dtype=torch.float, device=device)
-        
-        # Forward pass
-        fake_imgs = generator(z)
     
         # Compute loss and backpropagate error gradients
-        loss = criterion(discriminator(fake_imgs).squeeze(), labels)
+        # Fake images are not detached to allow gradient flow to generator.
+        # Although fake images are passed to discriminator, they are labeled as real
+        loss = criterion(discriminator(fake_imgs).squeeze(), label_as_real)
         loss.backward()
         
         # Gradient descent
@@ -90,23 +112,5 @@ def train_gan(
         
         # Gather running loss
         running_g_loss += loss.item()
-
-        #######################
-        # Train Discriminator #
-        #######################
-
-        optim_d.zero_grad()
-        
-        label_real = torch.full((imgs.size(0),), 1, dtype=torch.float, device=device)
-        label_fake = torch.full((imgs.size(0),), 0, dtype=torch.float, device=device)
-        loss_on_real = criterion(discriminator(imgs.to(device)).squeeze(), label_real)
-        loss_on_fake = criterion(discriminator(fake_imgs.detach()).squeeze(), label_fake)
-
-        loss = loss_on_real + loss_on_fake
-
-        loss.backward()
-        optim_d.step()
-
-        running_d_loss += loss.item()
         
     return running_g_loss / num_batches, running_d_loss / num_batches
