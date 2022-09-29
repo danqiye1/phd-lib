@@ -10,7 +10,8 @@ from .utils import plot_task_error
 parser = argparse.ArgumentParser()
 parser.add_argument('--results_dir', type=str, default='results')
 parser.add_argument('--epochs', type=str, default='5', choices=['3', '5'])
-parser.add_argument('--benchmark', type=str, default='splitmnist', choices=['splitmnist', 'permutedmnist'])
+parser.add_argument('--benchmark', type=str, default='lenet-on-split', 
+                        choices=['lenet-on-split', 'lenet-on-permuted', 'mlp-on-split', 'mlp-on-permuted'])
 parser.add_argument('--strategy', type=str, default='all', 
                     choices=['all', 'ewc', 'pseudo', 'rehearsal', 'multihead_smooth'])
 args = parser.parse_args()
