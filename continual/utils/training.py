@@ -385,5 +385,7 @@ def train_multihead(
                 vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
                 val_loss[task] += [vloss]
                 val_error[task] += [verror]
+
+        model.train()
     
     return train_loss, val_loss, val_error
