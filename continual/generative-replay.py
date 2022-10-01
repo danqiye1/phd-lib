@@ -125,5 +125,3 @@ with open("results/gr_error.json", 'w') as fp:
 
 with open("results/gr_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
-
-plot_task_error(0, val_error, boundaries=boundaries, strategy="results/gr")
