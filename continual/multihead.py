@@ -46,7 +46,7 @@ elif args.dataset == "PermutedMNIST":
 
 # Setup training
 device = torch.device(args.device_type)
-model = MultiHeadLeNet(device=device).to(device)
+model = MultiHeadLeNet(device=device, benchmark=args.dataset).to(device)
 
 # Setup metrics collection
 train_loss = {task: [] for task in range(trainset.num_tasks())}
