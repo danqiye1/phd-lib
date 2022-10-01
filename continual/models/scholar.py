@@ -34,7 +34,7 @@ class Scholar(object):
     def train_solver(
             self, dataset,
             old_scholar,
-            batch_size=16,
+            batch_size=32,
             mix_ratio=0.5,
             lr=0.001,
             criterion=nn.CrossEntropyLoss(),
