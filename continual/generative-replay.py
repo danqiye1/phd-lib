@@ -91,10 +91,18 @@ for task in range(trainset.num_tasks()):
         mix_ratio = 0.5
 
     # Train generator
-    for epoch in tqdm(range(epochs)):
+    tqdm.write("Training Generator")
+    for epoch in tqdm(range(config['epochs'])):
         gloss, dloss = new_scholar.train_generator(trainset)
 
+    # Visualize the generator img quality for this scholar
+    imgs, _ = new_scholar.sample(64)
+    img_grid = make_grid(imgs.cpu())
+    plt.imshow(np.transpose(img_grid, (1, 2, 0)))
+    plt.savefig(f"results/gan/task{task}_fake_imgs.jpg")
+
     # Train solver
+    tqdm.write("Training Solver")
     for epoch in tqdm(range(epochs)):
         loss, vloss, verror = new_scholar.train_solver(
                                 trainset, old_scholar, 
