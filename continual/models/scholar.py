@@ -33,7 +33,7 @@ class Scholar(object):
 
     def train_solver(
             self, dataset,
-            old_scholar,
+            old_scholars,
             batch_size=32,
             mix_ratio=0.5,
             lr=0.001,
@@ -57,10 +57,11 @@ class Scholar(object):
             labels = labels.to(device)
 
             # Generate replay batch
-            if old_scholar:
-                replay_img, replay_label = old_scholar.sample(replay_size)
-                imgs = torch.cat((replay_img, imgs))
-                labels = torch.cat((replay_label, labels))
+            if len(old_scholars):
+                for old_scholar in old_scholars:
+                    replay_img, replay_label = old_scholar.sample(replay_size)
+                    imgs = torch.cat((replay_img, imgs))
+                    labels = torch.cat((replay_label, labels))
 
             # Shuffle the replay batch
             indices = torch.randperm(len(labels))

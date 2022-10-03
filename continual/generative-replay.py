@@ -5,6 +5,7 @@ to mitigate catastrophic forgetting.
 import torch
 import json
 import argparse
+import numpy as np
 from .models import Scholar, MLP
 from patterns.models import LeNet, Generator, Discriminator, weights_init
 from patterns.utils import validate
@@ -12,7 +13,8 @@ from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from tqdm import tqdm
 from copy import deepcopy
-from .utils import plot_task_error
+from torchvision.utils import make_grid
+from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -83,8 +85,8 @@ for task in range(trainset.num_tasks()):
     else:
         epochs = 1
         new_scholar = Scholar(
-                        deepcopy(old_scholar.generator), 
-                        deepcopy(old_scholar.discriminator), 
+                        deepcopy(generator), 
+                        deepcopy(discriminator), 
                         deepcopy(old_scholar.solver),
                         task_id=task,
                         device=device)
@@ -105,7 +107,7 @@ for task in range(trainset.num_tasks()):
     tqdm.write("Training Solver")
     for epoch in tqdm(range(epochs)):
         loss, vloss, verror = new_scholar.train_solver(
-                                trainset, old_scholar, 
+                                trainset, scholars, 
                                 device=device,
                                 mix_ratio=mix_ratio,
                                 validate_fn=validate, 
