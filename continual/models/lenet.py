@@ -2,16 +2,19 @@ import torch
 import torch.nn as nn
 from functools import reduce
 from patterns.models import LeNetBase, LeNetHead
+from .mlp import MLP
 
-class MultiHeadLeNet(nn.Module):
+class MultiHead(nn.Module):
     """ MultiHeadLeNet for Continual Learning """
-    def __init__(self, device=torch.device("cpu"), benchmark='SplitMNIST'):
-        super(MultiHeadLeNet, self).__init__()
-        self.base = LeNetBase()
+    def __init__(self, device=torch.device("cpu"), benchmark='SplitMNIST', architecture='lenet'):
+        super(MultiHead, self).__init__()
+        assert architecture in ['lenet', 'mlp'], "Only 'lenet', 'mlp' available as architecture choice."
+        self.base = LeNetBase() if architecture == 'LeNet' else MLP(output_size=84)
         self.heads = nn.ModuleList([])
         assert benchmark in ['SplitMNIST', 'PermutedMNIST'], \
             "Benchmark must be SplitMNIST or PermutedMNIST!"
         self.benchmark = benchmark
+        self.architecture = architecture
 
         # Keep track of which device model is on
         self.device = device

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
 from .utils import train_multihead, plot_task_error
-from .models import MultiHeadLeNet
+from .models import MultiHead
 from patterns.utils import validate, confusion_matrix
 
 parser = argparse.ArgumentParser()
@@ -22,6 +22,7 @@ parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--data_dir', type=str, default='./')
 parser.add_argument('--device_type', type=str, default="cuda:0", choices=['cuda:0', 'cuda:1', 'cpu'])
 parser.add_argument('--dataset', type=str, default="SplitMNIST", choices=['SplitMNIST', 'PermutedMNIST'])
+parser.add_argument('--model', type=str, default='lenet', choices=['lenet', 'mlp'])
 args = parser.parse_args()
 
 # Hyperparameters configuration
@@ -31,11 +32,17 @@ config = {
     "batch_size": args.batch_size,
 }
 
-transforms = Compose([
-    ToTensor(),
-    Pad(2), # For LeNet input
-    Normalize(mean=(0.1307,), std=(0.3081,))
-])
+if args.model == 'lenet':
+    transforms = Compose([
+        ToTensor(),
+        Pad(2),
+        Normalize(mean=(0.1307,), std=(0.3081,))
+    ])
+else:
+    transforms = Compose([
+        ToTensor(),
+        Normalize(mean=(0.1307,), std=(0.3081,))
+    ])
 
 if args.dataset == "SplitMNIST":
     trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
@@ -46,7 +53,7 @@ elif args.dataset == "PermutedMNIST":
 
 # Setup training
 device = torch.device(args.device_type)
-model = MultiHeadLeNet(device=device, benchmark=args.dataset).to(device)
+model = MultiHead(device=device, benchmark=args.dataset, architecture=args.model).to(device)
 
 # Setup metrics collection
 train_loss = {task: [] for task in range(trainset.num_tasks())}
