@@ -35,22 +35,16 @@ config = {
 }
 
 # Setup training
-solver = LeNet() if args.model == 'lenet' else MLP()
+solver = LeNet() if args.model == 'lenet' else MLP(input_size=32*32)
 generator = Generator(args.z_size).apply(weights_init)
 discriminator = Discriminator().apply(weights_init)
 device = torch.device(args.device_type)
 
-if args.model == 'lenet':
-    transforms = Compose([
-        ToTensor(),
-        Pad(2),
-        Normalize(mean=(0.1307,), std=(0.3081,))
-    ])
-else:
-    transforms = Compose([
-        ToTensor(),
-        Normalize(mean=(0.1307,), std=(0.3081,))
-    ])
+transforms = Compose([
+    ToTensor(),
+    Pad(2),
+    Normalize(mean=(0.1307,), std=(0.3081,))
+])
 if args.dataset == 'SplitMNIST':
     trainset = SplitMNIST(args.data_dir, download=True, transform=transforms)
     evalset = SplitMNIST(args.data_dir, train=False, download=True, transform=transforms)
