@@ -9,7 +9,7 @@ class MultiHead(nn.Module):
     def __init__(self, device=torch.device("cpu"), benchmark='SplitMNIST', architecture='lenet'):
         super(MultiHead, self).__init__()
         assert architecture in ['lenet', 'mlp'], "Only 'lenet', 'mlp' available as architecture choice."
-        self.base = LeNetBase() if architecture == 'LeNet' else MLP(output_size=84)
+        self.base = LeNetBase() if architecture == 'lenet' else MLP(output_size=84)
         self.heads = nn.ModuleList([])
         assert benchmark in ['SplitMNIST', 'PermutedMNIST'], \
             "Benchmark must be SplitMNIST or PermutedMNIST!"
