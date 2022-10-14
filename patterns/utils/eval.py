@@ -87,7 +87,7 @@ def confusion_matrix(
     labels = []
     for _, vdata in enumerate(dataloader):
         v_inputs, v_labels = vdata
-        v_outputs = model(v_inputs.to(device))
+        v_outputs, _ = model(v_inputs.to(device))
         logits.append(v_outputs)
         labels.append(v_labels)
     

@@ -9,9 +9,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torchvision.transforms import Compose, Pad, ToTensor, Normalize
 from .datasets import SplitMNIST, PermutedMNIST
-from .utils import train_multihead, plot_task_error
 from .models import MultiHead
-from patterns.utils import validate, confusion_matrix
+from patterns.utils import confusion_matrix
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=32)
@@ -53,7 +52,11 @@ elif args.dataset == "PermutedMNIST":
 
 # Setup training
 device = torch.device(args.device_type)
-model = MultiHead(device=device, benchmark=args.dataset, architecture=args.model).to(device)
+model = MultiHead(
+            device=device, 
+            benchmark=args.dataset, 
+            architecture=args.model, 
+            num_tasks=trainset.num_tasks()).to(device)
 
 # Setup metrics collection
 train_loss = {task: [] for task in range(trainset.num_tasks())}
@@ -65,7 +68,6 @@ boundaries = [0 for _ in range(evalset.num_tasks())]
 
 for task in range(trainset.num_tasks()):
     tqdm.write(f"Training on task {trainset.get_current_task()}")
-    model.add_head(num_classes=trainset.num_classes())
     if task == 0:
         epochs = config['epochs']
     else:
@@ -73,12 +75,7 @@ for task in range(trainset.num_tasks()):
     
     # Train with epoch training
     for epoch in tqdm(range(epochs)):
-        loss, vloss, verror = train_multihead(
-                                model, trainset,
-                                batch_size=config['batch_size'],
-                                device=device,
-                                validate_fn=validate,
-                                valset=evalset)
+        loss, vloss, verror = model.fit(trainset, validate=True, valset=evalset)
 
         # Update metrics
         for key in loss:
@@ -98,11 +95,6 @@ testset = SplitMNIST(
             transform=transforms, 
             tasks=[[0,1,2,3,4,5,6,7,8,9]])
 
-plt.figure("confusion")
-confusion_display = confusion_matrix(model, testset, device=device)
-confusion_display.plot()
-plt.savefig("results/multihead_confusion.jpg")
-
 
 with open("results/multihead_error.json", 'w') as fp:
     json.dump(val_error, fp)
@@ -110,5 +102,10 @@ with open("results/multihead_error.json", 'w') as fp:
 with open("results/multihead_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
 
-plot_task_error(0, val_error, boundaries=boundaries, strategy="results/multihead")
+# plot_task_error(0, val_error, boundaries=boundaries, strategy="results/multihead")
+
+plt.figure("confusion")
+confusion_display = confusion_matrix(model, testset, device=device)
+confusion_display.plot()
+plt.savefig("results/multihead_confusion.jpg")
     
