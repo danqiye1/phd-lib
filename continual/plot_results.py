@@ -25,6 +25,11 @@ with open(f'{results_dir}/boundaries.json', 'r') as fp:
 
 num_tasks = len(boundaries)
 
+if "split" in args.benchmark:
+    benchmark = "split"
+else:
+    benchmark = "permuted"
+
 def plot_strategy(strategy, results_dir, boundaries):
     filepath = os.path.join(results_dir, f'{strategy}_error.json')
 
@@ -32,7 +37,7 @@ def plot_strategy(strategy, results_dir, boundaries):
         result = json.load(fp)
 
     for task in result.keys():
-        plot_task_error(task, result, boundaries=boundaries, save=False, strategy=strategy)
+        plot_task_error(task, result, boundaries=boundaries, save=False, strategy=strategy, benchmark=benchmark)
 
 if args.strategy == 'all':
     for strategy in  ('ewc', 'pseudo', 'rehearsal', 'multihead', 'gr'):
