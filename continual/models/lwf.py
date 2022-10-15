@@ -48,7 +48,7 @@ class LwF(nn.Module):
                 old_head_weights = copy.deepcopy(self.old_head.weight)
                 new_head_weights = copy.deepcopy(self.new_head.weight)
                 self.old_head = nn.Linear(84, old_head_weights.size(0) + new_head_weights.size(0))
-                self.old_head.weight = nn.Parameter(torch.cat(old_head_weights, new_head_weights))
+                self.old_head.weight = nn.Parameter(torch.cat((old_head_weights, new_head_weights)))
         else:
             self.old_head = self.new_head
 
