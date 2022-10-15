@@ -13,7 +13,7 @@ parser.add_argument('--epochs', type=str, default='5', choices=['3', '5'])
 parser.add_argument('--benchmark', type=str, default='lenet-on-split', 
                         choices=['lenet-on-split', 'lenet-on-permuted', 'mlp-on-split', 'mlp-on-permuted'])
 parser.add_argument('--strategy', type=str, default='all', 
-                    choices=['all', 'ewc', 'pseudo', 'rehearsal', 'multihead_smooth', 'gr'])
+                    choices=['all', 'ewc', 'pseudo', 'rehearsal', 'multihead_smooth', 'gr', 'lwf'])
 args = parser.parse_args()
 
 # Preprocess path to results
@@ -40,7 +40,7 @@ def plot_strategy(strategy, results_dir, boundaries):
         plot_task_error(task, result, boundaries=boundaries, save=False, strategy=strategy, benchmark=benchmark)
 
 if args.strategy == 'all':
-    for strategy in  ('ewc', 'pseudo', 'rehearsal', 'multihead', 'gr'):
+    for strategy in  ('ewc', 'pseudo', 'rehearsal', 'multihead', 'gr', 'lwf'):
        plot_strategy(strategy, results_dir, boundaries)
 else:
     plot_strategy(args.strategy, results_dir, boundaries)
