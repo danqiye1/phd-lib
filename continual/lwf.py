@@ -91,6 +91,4 @@ with open("results/lwf_error.json", 'w') as fp:
 
 with open("results/lwf_boundaries.json", "w") as fp:
     json.dump(boundaries, fp)
-
-plot_task_error(0, val_error, boundaries=boundaries, strategy="results/lwf")
     
