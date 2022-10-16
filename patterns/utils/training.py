@@ -18,6 +18,8 @@ def train_epoch(
         optimizer=None,
         criterion=torch.nn.CrossEntropyLoss(),
         device=torch.device("cpu"),
+        validate_fn=None,
+        valset=None
     ):
     """ Train one epoch of model.
 
@@ -47,7 +49,9 @@ def train_epoch(
         num_workers=2
     )
 
-    num_batches = len(dataloader)
+    train_loss = {task:[] for task in range(dataset.num_tasks())}
+    val_loss = {task:[] for task in range(dataset.num_tasks())}
+    val_error = {task:[] for task in range(dataset.num_tasks())}
 
     if not optimizer:
         # Default optimizer if one is not provided
@@ -71,4 +75,16 @@ def train_epoch(
         # Gather running loss
         running_loss += loss.item()
         
-    return running_loss / num_batches
+        train_loss[dataset.get_current_task()].append(loss.item())
+
+        # In-training validation
+        if validate_fn:
+            for task in range(dataset.get_current_task() + 1):
+                valset = valset.go_to_task(task)
+                vloss, verror = validate_fn(model, valset, criterion=criterion, device=device)
+                val_loss[task] += [vloss]
+                val_error[task] += [verror]
+
+        model.train()
+    
+    return train_loss, val_loss, val_error
