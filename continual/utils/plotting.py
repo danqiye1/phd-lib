@@ -9,9 +9,17 @@ def plot_task_error(
         boundaries=[], 
         save=True,
         strategy='example',
+        benchmark='split'
     ):
+    # Hard-code for QE. Next time make more generic
     plt.figure(task_num)
-    plt.title(f'Error for Task {task_num}')
+    if benchmark == 'split':
+        class_labels = [(0,1), (2,3), (4,5), (6,7), (8,9)]
+        label = class_labels[int(task_num)]
+        plt.title(f'Error on Class Label {label}')
+    else:
+        plt.title(f"Error on Permuted Task {task_num}")
+    
     plt.xlabel("iterations")
     plt.ylabel("error")
     for x in boundaries:
